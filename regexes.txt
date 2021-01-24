@@ -3,6 +3,6 @@
 [a-zA-Z]{1}\w{0,}// id
 (-\d{1,})|(\d{1,})// integer constant
 [-]{0,1}((\d{1,}[.]\d{1,})|(\d{1,}[eE]\d{1,}))// double constant
-"(\w|\s){0,}"// string constant
+"(\w|\s|[._^%$#!~@,-]){0,}"// string constant
 ([+]{2}|--)|(=)|(([+]|-|[*]|[/]|[%]){1})// operation
 [(){}[\],;.]{1}|[:]{2}// punctuation
