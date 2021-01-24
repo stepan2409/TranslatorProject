@@ -1,2 +1,6 @@
 not a comment
-/*hop*/hey lala//ley
+// short comment
+/* looooooo
+ooooooooooo
+ooooooooong
+comment */

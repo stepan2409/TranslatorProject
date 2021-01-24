@@ -18,12 +18,12 @@
     <ClCompile Include="Translator.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="serviceWords.txt" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="input.txt" />
     <Text Include="config.txt" />
     <Text Include="regexes.txt" />
     <Text Include="output.txt" />
+    <Text Include="serviceWords.txt" />
   </ItemGroup>
 </Project>

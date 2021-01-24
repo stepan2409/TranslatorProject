@@ -2,7 +2,9 @@
 #include <string>
 #include <regex>
 #include <fstream>
+#include <vector>
 #include <exception>
+#include <sstream>
 
 // Конфигуратор файлов. Берет из config.txt адреса файлов и присваивает их потокам. Если до какого-то файла не может достучаться кидает invalid_argument
 void filesConfigurer (std::ifstream& inputFile, std::ofstream& outputFile, std::ifstream& serviceWordsFile, std::ifstream& regexesFile) {
@@ -44,19 +46,14 @@ void filesConfigurer (std::ifstream& inputFile, std::ofstream& outputFile, std::
     regexesFile = std::ifstream (regexesFileName);
 }
 
-// Удаляет комменты из текста. Предварительно считывает из serviceWordsStream 6 символов:
+// Удаляет комменты из текста. Этой функции нужно передать 6 char'ов:
 // shortComOne, shortComTwo - символы для короткого коммента (1 строка)
 // longComBeginOne, longComBeginTwo - символы для начала длинного коммента
 // longComEndOne, longComEndTwo - символы для конца длинного коммента
-void decomment (std::string& text, std::ifstream& serviceWordsStream) {
+void decomment (std::string& text, char shortComOne, char shortComTwo, char longComBeginOne, char longComBeginTwo, char longComEndOne, char longComEndTwo) {
     if (text.size () <= 1) {
         return;
     }
-
-    char shortComOne, shortComTwo, longComBeginOne, longComBeginTwo, longComEndOne, longComEndTwo;
-    serviceWordsStream >> shortComOne >> shortComTwo >>
-        longComBeginOne >> longComBeginTwo >>
-        longComEndOne >> longComEndTwo;
 
     bool readingShortComment = false, readingLongComment = false, previousCharWasComment = false;
     char previousChar, currentChar;
@@ -90,10 +87,22 @@ void decomment (std::string& text, std::ifstream& serviceWordsStream) {
             previousCharWasComment = false;
         }
     }
-    /*if (!readingShortComment && !readingLongComment) {
-        bufferString += currentChar;
-    }*/
     text = bufferString;
+}
+
+void regexesReader (std::string& regexesText, std::vector<std::regex>& regexesVector) {
+    std::istringstream ris (regexesText);
+    int n = 0;
+    ris >> n;
+    if (n == 0) {
+        throw std::invalid_argument ("Failed to read amount of regexes from regexes file.");
+    }
+    for (int i = 0; i < n; ++i) {
+        std::string enteredRegexString;
+        std::getline (ris, enteredRegexString);
+        std::regex enteredRegex (enteredRegexString);
+        regexesVector.push_back (enteredRegex);
+    }
 }
 
 int main()
@@ -110,10 +119,26 @@ int main()
         return 0;
     }
 
+    char shortComOne, shortComTwo, longComBeginOne, longComBeginTwo, longComEndOne, longComEndTwo;
+    serviceWordsStream >> shortComOne >> shortComTwo >>
+        longComBeginOne >> longComBeginTwo >>
+        longComEndOne >> longComEndTwo;
     std::string inputText;
     inputText.assign ((std::istreambuf_iterator<char> (inputStream)), (std::istreambuf_iterator<char> ()));
-    decomment (inputText, serviceWordsStream);
-    outputStream << inputText;
+    decomment (inputText, shortComOne, shortComTwo, longComBeginOne, longComBeginTwo, longComEndOne, longComEndTwo);
+    //outputStream << inputText;
+
+    std::vector<std::regex> regexesVector;
+    std::string regexesText;
+    regexesText.assign ((std::istreambuf_iterator<char> (regexesStream)), (std::istreambuf_iterator<char> ()));
+    decomment (regexesText, shortComOne, shortComTwo, longComBeginOne, longComBeginTwo, longComEndOne, longComEndTwo);
+    try {
+        regexesReader (regexesText, regexesVector);
+    }
+    catch (std::invalid_argument& e) {
+        std::cerr << "Error 0-1. " << e.what ();
+        return 0;
+    }
 
     std::cout << "My job is done!";
 }
