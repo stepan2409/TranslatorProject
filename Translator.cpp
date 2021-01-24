@@ -97,6 +97,7 @@ void regexesReader(std::string& regexesText, std::vector<std::regex>& regexesVec
 	if (n == 0) {
 		throw std::invalid_argument("Failed to read amount of regexes from regexes file.");
 	}
+	++n;
 	for (int i = 0; i < n; ++i) {
 		std::string enteredRegexString;
 		std::getline(ris, enteredRegexString);
