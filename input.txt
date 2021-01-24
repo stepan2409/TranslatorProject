@@ -1,6 +1,6 @@
-not a comment
-// short comment
-/* looooooo
-ooooooooooo
-ooooooooong
-comment */
+int main() {
+	for (int i = 0; i < n; ++i)
+	{
+		cin >> a;
+	}
+}
