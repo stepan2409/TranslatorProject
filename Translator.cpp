@@ -101,8 +101,13 @@ void regexesReader(std::string& regexesText, std::vector<std::regex>& regexesVec
 	for (int i = 0; i < n; ++i) {
 		std::string enteredRegexString;
 		std::getline(ris, enteredRegexString);
-		std::regex enteredRegex(enteredRegexString);
-		regexesVector.push_back(enteredRegex);
+		try {
+			std::regex enteredRegex (enteredRegexString);
+			regexesVector.push_back (enteredRegex);
+		}
+		catch (std::exception& e) {
+			throw std::runtime_error ("Failed to create regex number " + std::to_string (i));
+		}
 	}
 }
 
@@ -134,6 +139,10 @@ bool initFiles(std::ofstream& outputStream, std::string& inputText, std::vector<
 	}
 	catch (std::invalid_argument & e) {
 		std::cerr << "Error 0-1. " << e.what();
+		return false;
+	}
+	catch (std::runtime_error& e) {
+		std::cerr << "Error 0-2. " << e.what ();
 		return false;
 	}
 	return true;
