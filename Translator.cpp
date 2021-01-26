@@ -185,6 +185,59 @@ void getLexems(std::string text, std::vector<std::regex>& regexes, std::vector<s
 	}
 }
 
+// Делает тоже самое, что и getLexems, только с использованием regex_match вместо regex_search
+void getLexemsUsingMatch (std::string text, std::vector<std::regex>& regexes, std::vector<std::pair<int, std::string> >& lexems) {
+	int p = 0, end = 1;
+	while (p < text.size ())
+	{
+		end = p;
+		while (end < text.size () && isCharDivider (text[p]))
+		{
+			text[p] = '$';
+			++p;
+			++end;
+		}
+		if (end == text.size ())
+			return;
+		int type = 0;
+		std::string name = "";
+		bool weFoundLexem = false;
+		while (end < text.size ()) {
+			int subType = 0;
+			for (int i = 1; i < regexes.size (); ++i)
+			{
+				std::smatch token;
+				std::string sub = text.substr (p, (end - p + 1));
+				if (std::regex_match (sub, token, regexes[i]))
+				{
+					if (name.size () < token[0].str().size())
+					{
+						type = i, name = token.str ();
+						weFoundLexem = true;
+						subType = i;
+					}
+				}
+			}
+			if (subType == 0 && weFoundLexem) {
+				break;
+			}
+			++end;
+		}
+		bool isundefined = (type == 0);
+		for (int i = 0; i < name.size () || isundefined; ++i, ++p)
+		{
+			if (isCharDivider (text[p]))
+				isundefined = 0;
+			if (isundefined)
+				name.push_back (text[p]);
+			isundefined &= (p < text.size () - 1);
+		}
+		text = text.substr (p);
+		p = 0;
+		lexems.push_back ({ type, name });
+	}
+}
+
 int main()
 {
 	std::vector<std::pair<int, std::string> > lexems;
@@ -193,7 +246,7 @@ int main()
 	std::ofstream output;
 	if (!initFiles(output, text, regexes))
 		return 0;
-	getLexems(text, regexes, lexems);
+	getLexemsUsingMatch(text, regexes, lexems);
 	output << "Successfully created:\n";
 	for (auto p : lexems)
 	{
