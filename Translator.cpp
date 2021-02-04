@@ -249,16 +249,19 @@ void getLexemsUsingMatch (std::string text, std::vector<std::regex>& regexes, st
 
 int main()
 {
+	setlocale (LC_ALL, "Russian");
 	std::vector<std::pair<int, std::string> > lexems;
 	std::vector<std::regex> regexes;
 	std::string text;
 	std::ofstream output;
 	if (!initFiles(output, text, regexes))
 		return 0;
+	std::cout << "Lexical analizing..." << std::endl;
 	getLexemsUsingMatch(text, regexes, lexems);
-	output << "Successfully created:\n";
+	output << "Successfully created:" << std::endl;
 	for (auto p : lexems)
 	{
 		output << "{" << p.first << ", \"" << p.second << "\"}\n";
 	}
+	std::cout << "Lexical analizing completed!" << std::endl;
 }
