@@ -1,8 +1,8 @@
 7
-(цел|строка|тудой|али|сюдой|цел|бул|кабы)// service words
-[а-€ј-я_]{1}[а-€ј-я_0-9]{0,}// id
+(int|bool|string|float|in|out|if|else|for|while|break|continue|return|goto|label|true|false|struct)// service words
+[a-zA-Z_]{1}[a-zA-Z_0-9]{0,}// id
 (-\d{1,})|(\d{1,})// integer constant
 [-]{0,1}((\d{1,}[.]\d{0,})|(\d{1,}[е≈]\d{0,}))// double constant
 "(\w|[а-€ј-я]|\s|[=._^%$#!~@,[\]\-(){}]){0,}"// string constant
-([<]{2}|[>]{2}|[+]{2}|--)|(=)|(([+]|-|[*]|[/]|[%]){1})// operation
+(([+]{2}|[-]{2}|[=]{2})|([+]|[-]|[*]|[/]|[%]|[=])|(>|<|>=|<=|!|!=))// operation
 [<>#(){}[\],;.]{1}|[:]{2}// punctuation

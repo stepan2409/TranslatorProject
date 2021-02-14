@@ -1,10 +1,14 @@
-﻿#include <iostream>
+﻿#pragma once
+#include <iostream>
 #include <string>
 #include <regex>
 #include <fstream>
 #include <vector>
 #include <exception>
 #include <sstream>
+#include "LexemChecker.h"
+
+typedef std::pair<int, std::string> lexem;
 
 // Конфигуратор файлов. Берет из config.txt адреса файлов и присваивает их потокам. Если до какого-то файла не может достучаться кидает invalid_argument
 void filesConfigurer(std::ifstream& inputFile, std::ofstream& outputFile, std::ifstream& serviceWordsFile, std::ifstream& regexesFile) {
@@ -154,7 +158,7 @@ bool isCharDivider(char t)
 }
 
 // Заполняет вектор lexems лексемами за O(n^2) в лучшем, и за e^n в худшем.
-void getLexems(std::string text, std::vector<std::regex>& regexes, std::vector<std::pair<int, std::string> >& lexems)
+void getLexems(std::string text, std::vector<std::regex>& regexes, std::vector<lexem>& lexems)
 {
 	int p = 0;
 	while (p < text.size())
@@ -195,7 +199,7 @@ void getLexems(std::string text, std::vector<std::regex>& regexes, std::vector<s
 }
 
 // Делает тоже самое, что и getLexems, только с использованием regex_match вместо regex_search
-void getLexemsUsingMatch (std::string text, std::vector<std::regex>& regexes, std::vector<std::pair<int, std::string> >& lexems) {
+void getLexemsUsingMatch (std::string text, std::vector<std::regex>& regexes, std::vector<lexem>& lexems) {
 	int p = 0, end = 1;
 	while (p < text.size ())
 	{
@@ -250,18 +254,27 @@ void getLexemsUsingMatch (std::string text, std::vector<std::regex>& regexes, st
 int main()
 {
 	setlocale (LC_ALL, "Russian");
-	std::vector<std::pair<int, std::string> > lexems;
+	std::vector<lexem> lexems;
 	std::vector<std::regex> regexes;
 	std::string text;
 	std::ofstream output;
 	if (!initFiles(output, text, regexes))
 		return 0;
-	std::cout << "Lexical analizing..." << std::endl;
+	std::cout << "Lexical analyzing..." << std::endl;
 	getLexemsUsingMatch(text, regexes, lexems);
 	output << "Successfully created:" << std::endl;
 	for (auto p : lexems)
 	{
 		output << "{" << p.first << ", \"" << p.second << "\"}\n";
 	}
-	std::cout << "Lexical analizing completed!" << std::endl;
+	std::cout << "Lexical analyzing completed!" << std::endl;
+	/*std::cout << "Generated " << lexems.size() << " lexems:\n";
+	for (int i = 0; i < lexems.size(); ++i)
+	{
+		std::cout << i+1 << ". {" << lexems[i].first << ", \"" << lexems[i].second << "\"}\n";
+	}
+	*/
+	LexemChecker mainChecker = LexemChecker(lexems);
+	mainChecker.checkProgram();
+	std::cout << "Syntax: OK \n";
 }

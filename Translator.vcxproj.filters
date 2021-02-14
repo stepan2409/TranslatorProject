@@ -18,6 +18,9 @@
     <ClCompile Include="Translator.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
+    <ClCompile Include="LexemChecker.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="input.txt" />
@@ -25,5 +28,10 @@
     <Text Include="regexes.txt" />
     <Text Include="output.txt" />
     <Text Include="serviceWords.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="LexemChecker.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

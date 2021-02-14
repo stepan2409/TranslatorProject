@@ -1,1 +1,21 @@
-строка сказка "Жил был емеля";
+int main()
+{
+	for (int i = 0; i < n; ++i)
+	{
+	}
+	if (i < 0)
+		out a;
+	else 
+	{
+		a = b + c;
+		while (true) 
+			--b;
+		if (k + c >= (a = c / b)) {
+			k - 23;
+			in a;
+		}
+		else if (b) 
+			k;
+		else g = b = c;
+	}
+};

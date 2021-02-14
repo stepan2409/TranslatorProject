@@ -143,6 +143,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="LexemChecker.cpp" />
     <ClCompile Include="Translator.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -151,6 +152,9 @@
     <Text Include="output.txt" />
     <Text Include="regexes.txt" />
     <Text Include="serviceWords.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="LexemChecker.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
