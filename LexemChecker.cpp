@@ -11,16 +11,16 @@ bool LexemChecker::checkProgram() // <программа>
 {
 	checkOperators();
 	if (p != term_.size())
-		runException("Expected operator");
+		runException(L"Expected operator");
 	return 1;
 }
 bool LexemChecker::checkBlock() // <блок>
 {
-	if (match(7, "{"))
+	if (match(7, L"{"))
 	{
 		checkOperators();
-		if (!match(7, "}"))
-			runException("Expected ending bracket");
+		if (!match(7, L"}"))
+			runException(L"Expected ending bracket");
 		return 1;
 	}
 	return 0;
@@ -29,7 +29,7 @@ bool LexemChecker::checkUnsigned() // <беззнак>
 {
 	if (isEnd()) return 0;
 	if (type(p) == 0)
-		runException("Unexpected symbol");
+		runException(L"Unexpected symbol");
 	if (type(p) != 3)
 		return 0;
 	if (value(p)[0] <= '9' && value(p)[0] >= '0')
@@ -76,7 +76,7 @@ bool LexemChecker::checkString() // <строка>
 }
 bool LexemChecker::checkLogic() // <строка> 
 {
-	return match(1, "true") || match(1, "false");
+	return match(1, L"true") || match(1, L"false");
 }
 bool LexemChecker::checkPointer() // <указатель> 
 {
@@ -85,11 +85,11 @@ bool LexemChecker::checkPointer() // <указатель>
 	{
 		checkFuctionCall();
 		while (checkShift());
-		if (match(7, "."))
+		if (match(7, L"."))
 		{
 			if (checkPointer())
 				return 1;
-			runException("Invalid variable path\n");
+			runException(L"Invalid variable path\n");
 		}
 		return 1;
 	}
@@ -110,11 +110,11 @@ bool LexemChecker::checkNames() // <имена>
 	if (isEnd()) return 0;
 	if (checkName())
 	{
-		if (match(7, ","))
+		if (match(7, L","))
 		{
 			if (checkNames())
 				return 1;
-			runException("Invalid identifier");
+			runException(L"Invalid identifier");
 		}
 		return 1;
 	}
@@ -123,13 +123,13 @@ bool LexemChecker::checkNames() // <имена>
 bool LexemChecker::checkType() // <тип> 
 {
 	if (isEnd()) return 0;
-	if (match(1, "int"))
+	if (match(1, L"int"))
 		return 1;
-	if (match(1, "float"))
+	if (match(1, L"float"))
 		return 1;
-	if (match(1, "bool"))
+	if (match(1, L"bool"))
 		return 1;
-	if (match(1, "string"))
+	if (match(1, L"string"))
 		return 1;
 	return 0;
 }
@@ -137,90 +137,91 @@ bool LexemChecker::checkShift() // <сдвиг>
 {
 	if (isEnd()) return 0;
 	int r = p;
-	if (match(7, "["))
+	if (match(7, L"["))
 	{
 		if (checkPointer())
 		{
-			if (match(7, "]"))
+			if (match(7, L"]"))
 			{
 				return 1;
 			}
 		}
-		runException("Incorrect Array's index");
+		runException(L"Incorrect Array's index");
 	}
 	return 0;
 }
 
 bool LexemChecker::checkSign1() // <знак 1> 
 {
-	return match(6, "=");
+	return match(6, L"=") || match(6, L"+=") || match(6, L"-=") || match(6, L"*=") 
+		|| match(6, L"/=") || match(6, L"|=") || match(6, L"&=");
 }
 bool LexemChecker::checkSign2() // <знак 2> 
 {
-	return match(6, "||");
+	return match(6, L"||");
 }
 bool LexemChecker::checkSign3() // <знак 3> 
 {
-	return match(6, "&&");
+	return match(6, L"&&");
 }
 bool LexemChecker::checkSign4() // <знак 4> 
 {
-	return match(6, "|");
+	return match(6, L"|");
 }
 bool LexemChecker::checkSign5() // <знак 5> 
 {
-	return match(6, "^");
+	return match(6, L"^");
 }
 bool LexemChecker::checkSign6() // <знак 6> 
 {
-	return match(6, "&");
+	return match(6, L"&");
 }
 bool LexemChecker::checkSign7() // <знак 7> 
 {
-	return match(6, "==") || match(6, "!=");
+	return match(6, L"==") || match(6, L"!=");
 }
 bool LexemChecker::checkSign8() // <знак 8> 
 {
 	return
-		match(6, "<") ||
-		match(6, ">") ||
-		match(6, "<=") ||
-		match(6, ">=");
+		match(6, L"<") ||
+		match(6, L">") ||
+		match(6, L"<=") ||
+		match(6, L">=");
 }
 bool LexemChecker::checkSign9() // <знак 9> 
 {
-	return match(6, "<<") || match(6, ">>");
+	return match(6, L"<<") || match(6, L">>");
 }
 bool LexemChecker::checkSign10() // <знак 10> 
 {
-	return match(6, "+") || match(6, "-");
+	return match(6, L"+") || match(6, L"-");
 }
 bool LexemChecker::checkSign11() // <знак 11> 
 {
 	return
-		match(6, "*") ||
-		match(6, "/") ||
-		match(6, "%");
+		match(6, L"*") ||
+		match(6, L"/") ||
+		match(6, L"%");
 }
 bool LexemChecker::checkSign12() // <знак 12> 
 {
-	return match(6, "!");
+	return match(6, L"!");
 }
 bool LexemChecker::checkSign13() // <знак 13> 
 {
-	return match(6, "~");
+	return match(6, L"~");
 }
 bool LexemChecker::checkSign14() // <знак 14> 
 {
-	return match(6, "+") || match(6, "+");
+	return match(6, L"+") || match(6, L"+");
 }
 bool LexemChecker::checkSign15() // <знак 15> 
 {
-	return match(6, "++") || match(6, "--");
+	return match(6, L"++") || match(6, L"--");
 }
 bool LexemChecker::checkSign16() // <знак 16> 
 {
-	return match(6, "++") || match(6, "--");
+	return match(6, L"++") || match(6, L"--");
 }
 bool LexemChecker::checkExpression() // <выражение> 
 {
@@ -229,7 +230,7 @@ bool LexemChecker::checkExpression() // <выражение>
 		while (checkSign1())
 		{
 			if (!checkExp2())
-				runException("Expected value in expression");
+				runException(L"Expected value in expression");
 		}
 		return 1;
 	}
@@ -242,7 +243,7 @@ bool LexemChecker::checkExp2() // <выр 2>
 		while (checkSign2())
 		{
 			if (!checkExp3())
-				runException("Expected value in expression");
+				runException(L"Expected value in expression");
 		}
 		return 1;
 	}
@@ -255,7 +256,7 @@ bool LexemChecker::checkExp3() // <выр 3>
 		while (checkSign3())
 		{
 			if (!checkExp4())
-				runException("Expected value in expression");
+				runException(L"Expected value in expression");
 		}
 		return 1;
 	}
@@ -268,7 +269,7 @@ bool LexemChecker::checkExp4() // <выр 4>
 		while (checkSign4())
 		{
 			if (!checkExp5())
-				runException("Expected value in expression");
+				runException(L"Expected value in expression");
 		}
 		return 1;
 	}
@@ -281,7 +282,7 @@ bool LexemChecker::checkExp5() // <выр 5>
 		while (checkSign5())
 		{
 			if (!checkExp6())
-				runException("Expected value in expression");
+				runException(L"Expected value in expression");
 		}
 		return 1;
 	}
@@ -294,7 +295,7 @@ bool LexemChecker::checkExp6() // <выр 6>
 		while (checkSign6())
 		{
 			if (!checkExp7())
-				runException("Expected value in expression");
+				runException(L"Expected value in expression");
 		}
 		return 1;
 	}
@@ -307,7 +308,7 @@ bool LexemChecker::checkExp7() // <выр 7>
 		while (checkSign7())
 		{
 			if (!checkExp8())
-				runException("Expected value in expression");
+				runException(L"Expected value in expression");
 		}
 		return 1;
 	}
@@ -320,7 +321,7 @@ bool LexemChecker::checkExp8() // <выр 8>
 		while (checkSign8())
 		{
 			if (!checkExp9())
-				runException("Expected value in expression");
+				runException(L"Expected value in expression");
 		}
 		return 1;
 	}
@@ -333,7 +334,7 @@ bool LexemChecker::checkExp9() // <выр 9>
 		while (checkSign9())
 		{
 			if (!checkExp10())
-				runException("Expected value in expression");
+				runException(L"Expected value in expression");
 		}
 		return 1;
 	}
@@ -346,7 +347,7 @@ bool LexemChecker::checkExp10() // <выр 10>
 		while (checkSign10())
 		{
 			if (!checkExp11())
-				runException("Expected value in expression");
+				runException(L"Expected value in expression");
 		}
 		return 1;
 	}
@@ -359,7 +360,7 @@ bool LexemChecker::checkExp11() // <выр 11>
 		while (checkSign11())
 		{
 			if (!checkExp12())
-				runException("Expected value in expression");
+				runException(L"Expected value in expression");
 		}
 		return 1;
 	}
@@ -372,7 +373,7 @@ bool LexemChecker::checkExp12() // <выр 12>
 		sgn = 1;
 	bool exp = checkExp13();
 	if (sgn && !exp)
-		runException("Expected value after sign");
+		runException(L"Expected value after sign");
 	return exp;
 }
 bool LexemChecker::checkExp13() // <выр 13> 
@@ -382,7 +383,7 @@ bool LexemChecker::checkExp13() // <выр 13>
 		sgn = 1;
 	bool exp = checkExp14();
 	if (sgn && !exp)
-		runException("Expected value after sign");
+		runException(L"Expected value after sign");
 	return exp;
 }
 bool LexemChecker::checkExp14() // <выр 14> 
@@ -392,7 +393,7 @@ bool LexemChecker::checkExp14() // <выр 14>
 		sgn = 1;
 	bool exp = checkExp15();
 	if (sgn && !exp)
-		runException("Expected value after sign");
+		runException(L"Expected value after sign");
 	return exp;
 }
 bool LexemChecker::checkExp15() // <выр 15> 
@@ -402,7 +403,7 @@ bool LexemChecker::checkExp15() // <выр 15>
 		sgn = 1;
 	bool exp = checkExp16();
 	if (sgn && !exp)
-		runException("Expected value after sign");
+		runException(L"Expected value after sign");
 	return exp;
 }
 bool LexemChecker::checkExp16() // <выр 16> 
@@ -424,18 +425,18 @@ bool LexemChecker::checkConstant() // <константа>
 }
 bool LexemChecker::checkFuctionCall() // <результат функции> 
 {
-	if (match(7, "("))
+	if (match(7, L"("))
 	{
 		if (checkExpression())
 		{
-			while (match(7, ","))
+			while (match(7, L","))
 			{
 				if (!checkExpression())
-					runException("Expected argument");
+					runException(L"Expected argument");
 			}
 		}
-		if (!match(7, ")"))
-			runException("Invalid argument");
+		if (!match(7, L")"))
+			runException(L"Invalid argument");
 		return 1;
 	}
 	return 0;
@@ -444,12 +445,12 @@ bool LexemChecker::checkValue() // <значение>
 {
 	if (checkVariable() || checkConstant())
 		return 1;
-	if (match(7, "("))
+	if (match(7, L"("))
 	{
 		if (!checkExpression())
-			runException("Expected expession");
-		if (!match(7, ")"))
-			runException("Expected ending bracket");
+			runException(L"Expected expession");
+		if (!match(7, L")"))
+			runException(L"Expected ending bracket");
 		return 1;
 	}
 	return 0;
@@ -471,8 +472,12 @@ bool LexemChecker::checkOperators()
 		isop = 0;
 		if (checkFreeOperator() || checkBlock())
 			isop = 1;
-		else if (checkOperator() && match(7, ";"))
+		else if (checkOperator())
+		{
+			if (!match(7, L";"))
+				runException(L"Excepted ';'");
 			isop = 1;
+		}
 	} while (isop);
 	return 1;
 }
@@ -482,16 +487,16 @@ bool LexemChecker::checkExpOperator() // <оператор выражения>
 }
 bool LexemChecker::checkStreamOperator() // <оператор потока> 
 {
-	if (match(1, "in"))
+	if (match(1, L"in"))
 	{
 		if (!checkVariable())
-			runException("Expected variable");
+			runException(L"Expected variable");
 		return 1;
 	}
-	if (match(1, "out"))
+	if (match(1, L"out"))
 	{
 		if (!checkExpression())
-			runException("Expected expression");
+			runException(L"Expected expression");
 		return 1;
 	}
 	return 0;
@@ -502,26 +507,26 @@ bool LexemChecker::checkSpecOperator() // <спец. оператор>
 }
 bool LexemChecker::checkIf() // <оператор if> 
 {
-	if (match(1, "if"))
+	if (match(1, L"if"))
 	{
-		if (!match(7, "("))
-			runException("Expected arguments in brackets");
+		if (!match(7, L"("))
+			runException(L"Expected arguments in brackets");
 		if (!checkExpression())
-			runException("Expected expression");
-		if (!match(7, ")"))
-			runException("Expected ending bracket");
+			runException(L"Expected expression");
+		if (!match(7, L")"))
+			runException(L"Expected ending bracket");
 		if (!(checkBlock() || checkFreeOperator()))
 		{
-			if (!(checkOperator() && match(7, ";")))
-				runException("Expected operator");
+			if (!(checkOperator() && match(7, L";")))
+				runException(L"Expected operator");
 		}
-		if (match(1, "else"))
+		if (match(1, L"else"))
 		{
 			if (checkBlock() || checkFreeOperator())
 				return 1;
-			if (checkOperator() && match(7, ";"))
+			if (checkOperator() && match(7, L";"))
 				return 1;
-			runException("Expected operator");
+			runException(L"Expected operator");
 		}
 		return 1;
 	}
@@ -529,65 +534,65 @@ bool LexemChecker::checkIf() // <оператор if>
 }
 bool LexemChecker::checkWhile() // <оператор while> 
 {
-	if (match(1, "while"))
+	if (match(1, L"while"))
 	{
-		if (!match(7, "("))
-			runException("Expected arguments in brackets");
+		if (!match(7, L"("))
+			runException(L"Expected arguments in brackets");
 		if (!checkExpression())
-			runException("Expected expression");
-		if (!match(7, ")"))
-			runException("Expected ending bracket");
+			runException(L"Expected expression");
+		if (!match(7, L")"))
+			runException(L"Expected ending bracket");
 		if (checkBlock() || checkFreeOperator())
 			return 1;
-		if (checkOperator() && match(7, ";"))
+		if (checkOperator() && match(7, L";"))
 			return 1;
-		runException("Expected operator");
+		runException(L"Expected operator");
 	}
 	return 0;
 }
 bool LexemChecker::checkFor() // <оператор for> 
 {
-	if (match(1, "for"))
+	if (match(1, L"for"))
 	{
-		if (!match(7, "("))
-			runException("Expected arguments in brackets");
+		if (!match(7, L"("))
+			runException(L"Expected arguments in brackets");
 		checkForOperator();
-		if (!match(7, ";"))
-			runException("Expected ';'");
+		if (!match(7, L";"))
+			runException(L"Expected ';'");
 		checkForOperator();
-		if (!match(7, ";"))
-			runException("Expected ';'");
+		if (!match(7, L";"))
+			runException(L"Expected ';'");
 		checkForOperator();
-		if (!match(7, ")"))
-			runException("Expected ending bracket");
+		if (!match(7, L")"))
+			runException(L"Expected ending bracket");
 		if (checkBlock() || checkFreeOperator())
 			return 1;
-		if (checkOperator() && match(7, ";"))
+		if (checkOperator() && match(7, L";"))
 			return 1;
-		runException("Expected operator");
+		runException(L"LExpected operator");
 	}
 	return 0;
 }
 bool LexemChecker::checkGoto() // <оператор перехода> 
 {
-	if (match(1, "break")) return 1;
-	if (match(1, "continue")) return 1;
-	if (match(1, "return"))
+	if (match(1, L"break")) return 1;
+	if (match(1, L"continue")) return 1;
+	if (match(1, L"return"))
 	{
 		if (!checkExpression())
-			runException("Expected expression");
+			runException(L"Expected expression");
 		return 1;
 	}
-	if (match(1, "goto"))
+	if (match(1, L"goto"))
 	{
 		if (!checkName())
-			runException("Expected identifier");
+			runException(L"Expected identifier");
 		return 1;
 	}
-	if (match(1, "label"))
+	if (match(1, L"label"))
 	{
 		if (!checkName())
-			runException("Expected identifier");
+			runException(L"Expected identifier");
 		return 1;
 	}
 	return 0;
@@ -597,56 +602,58 @@ bool LexemChecker::checkDescription() // <описание>
 	if (checkType())
 	{
 		if (!checkName())
-			runException("Expected identifier");
+			runException(L"Expected identifier");
 		int var_type = 0;
-		if (match(6, "="))
+		if (match(6, L"="))
 		{
 			if (!checkExpression())
-				runException("Expected expression");
+				runException(L"Expected expression");
 			var_type = 1;
 		}
-		while (match(7, ","))
+		while (match(7, L","))
 		{
 			if (!checkName())
-				runException("Expected identifier");
-			if (match(6, "="))
+				runException(L"Expected identifier");
+			if (match(6, L"="))
 			{
 				if (!checkExpression())
-					runException("Expected expression");
+					runException(L"Expected expression");
 			}
 			var_type = 1;
 		}
-		if (!var_type && match(7, "("))
+		if (!var_type && match(7, L"("))
 		{
+			bool has_args = 0;
 			if (checkType())
 			{
-				while (match(7, ","))
+				has_args = 1;
+				while (match(7, L","))
 				{
 					var_type = 2;
 					if (!checkType())
-						runException("Expected type");
+						runException(L"Expected type");
 				}
 				if (!var_type && checkName())
 				{
 					var_type = 3;
-					while (match(7, ","))
+					while (match(7, L","))
 					{
 						if (!checkType())
-							runException("Expected type");
+							runException(L"Expected type");
 						if (!checkName())
-							runException("Expected identifier");
+							runException(L"Expected identifier");
 					}
-					if (!match(7, ")"))
-						runException("Expected ending bracket");
+					if (!match(7, L")"))
+						runException(L"Expected ending bracket");
 					if (!checkBlock())
-						runException("Expected description");
+						runException(L"Expected description");
 					return 1;
 				}
 			}
-			if (!match(7, ")"))
-				runException("Expected ending bracket");
-			if (!var_type && !checkBlock())
-				runException("Expected description");
+			if (!match(7, L")"))
+				runException(L"Expected ending bracket");
+			if (!var_type && !has_args)
+				checkBlock();
 		}
 		return 1;
 	}
@@ -662,23 +669,23 @@ bool LexemChecker::checkForOperator()
 }
 bool LexemChecker::checkStructure() // <описание структуры> 
 {
-	if (match(1, "struct"))
+	if (match(1, L"struct"))
 	{
 		if (!checkName())
-			runException("Expected identifier");
+			runException(L"Expected identifier");
 		if (!checkBlock())
-			runException("Expected description");
+			runException(L"Expected description");
 		return 1;
 	}
 	return 0;
 }
 
-bool LexemChecker::match(int type, std::string word)
+bool LexemChecker::match(int type, std::wstring word)
 {
 
 	if (isEnd()) return 0;
 	if (term_[p].first == 0)
-		runException("Unexpected symbol");
+		runException(L"Unexpected symbol");
 	if (term_[p].first != type)
 		return 0;
 	if (term_[p].second != word)
@@ -697,13 +704,13 @@ inline int LexemChecker::type(int p)
 	return term_[p].first;
 }
 
-inline std::string& LexemChecker::value(int p)
+inline std::wstring& LexemChecker::value(int p)
 {
 	return term_[p].second;
 }
 
-void LexemChecker::runException(std::string reason)
+void LexemChecker::runException(std::wstring reason)
 {
-	std::cout << "Syntax Error: " << reason << '\n';
+	std::wcout << L"Syntax Error: " << reason << '\n';
 	exit(0);
 }

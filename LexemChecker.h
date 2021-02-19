@@ -3,7 +3,7 @@
 #include <vector>
 #include <string>
 
-typedef std::pair<int, std::string> lexem;
+typedef std::pair<int, std::wstring> lexem;
 
 class LexemChecker
 {
@@ -75,13 +75,13 @@ public:
 	bool checkForOperator(); // <оператор внутри for>
 	bool checkStructure(); // <описание структуры>
 
-	bool match(int type, std::string word);
+	bool match(int type, std::wstring word);
 	bool isEnd();
 
 	inline int type(int p);
-	inline std::string& value(int p);
+	inline std::wstring& value(int p);
 
-	void runException(std::string reason);
+	void runException(std::wstring reason);
 
 	std::vector<lexem> term_;
 	int p = 0;

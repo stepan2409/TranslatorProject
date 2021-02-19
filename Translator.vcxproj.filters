@@ -23,11 +23,11 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="input.txt" />
     <Text Include="config.txt" />
     <Text Include="regexes.txt" />
     <Text Include="output.txt" />
     <Text Include="serviceWords.txt" />
+    <Text Include="input.txt" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LexemChecker.h">

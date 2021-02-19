@@ -1,1 +1,19 @@
-///**/
+﻿///**/
+int кек
+bool лол
+string письмо
+float дробкек
+in сюды
+out туды
+if кабы
+else али
+for покуда
+while доколе
+break тикаем
+continue поновой
+return вертай
+goto читкод
+label верста
+true ага
+false неа
+struct корпускула
