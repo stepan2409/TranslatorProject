@@ -1,7 +1,6 @@
 #pragma once
 #include <iostream>
-#include <vector>
-#include <string>
+#include "TID.h"
 
 typedef std::pair<int, std::wstring> lexem;
 
@@ -9,8 +8,14 @@ class LexemChecker
 {
 public:
 	LexemChecker(std::vector <lexem> lexems);
+	~LexemChecker();
 
 	bool checkProgram(); // <программа>
+
+private:
+
+// Синтаксический анализ
+
 	bool checkBlock(); // <блок>
 	bool checkUnsigned(); // <беззнак>
 	bool checkNumber(); // <число>
@@ -75,15 +80,29 @@ public:
 	bool checkForOperator(); // <оператор внутри for>
 	bool checkStructure(); // <описание структуры>
 
+
+// Семантический анализ
+
+
+
+// Вспомогательные функции
+
 	bool match(int type, std::wstring word);
 	bool isEnd();
 
 	inline int type(int p);
 	inline std::wstring& value(int p);
 
+	void pushBlock();
+	void popBlock();
+	void pushId();
+
 	void runException(std::wstring reason);
 
 	std::vector<lexem> term_;
+	TID *tid_tree_;
+	std::vector<TYPE> type_stack;
+	std::vector<std::wstring> name_stack;
 	int p = 0;
 };
 

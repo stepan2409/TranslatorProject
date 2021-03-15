@@ -5,6 +5,16 @@
 LexemChecker::LexemChecker(std::vector <lexem> lexems)
 {
 	term_.swap(lexems);
+	tid_tree_ = new TID;
+}
+
+LexemChecker::~LexemChecker()
+{
+	while (tid_tree_->parent != nullptr)
+	{
+		tid_tree_ = tid_tree_->parent;
+	}
+	delete tid_tree_;
 }
 
 bool LexemChecker::checkProgram() // <программа>
@@ -18,9 +28,11 @@ bool LexemChecker::checkBlock() // <блок>
 {
 	if (match(7, L"{"))
 	{
+		pushBlock();
 		checkOperators();
 		if (!match(7, L"}"))
 			runException(L"Expected ending bracket");
+		popBlock();
 		return 1;
 	}
 	return 0;
@@ -100,6 +112,7 @@ bool LexemChecker::checkName() // <имя>
 	if (isEnd()) return 0;
 	if (type(p) == 2)
 	{
+		name_stack.push_back(term_[p].second);
 		++p;
 		return 1;
 	}
@@ -123,15 +136,19 @@ bool LexemChecker::checkNames() // <имена>
 bool LexemChecker::checkType() // <тип> 
 {
 	if (isEnd()) return 0;
+	int typ = 0, array_depth = 0;
 	if (match(1, L"int"))
-		return 1;
-	if (match(1, L"float"))
-		return 1;
-	if (match(1, L"bool"))
-		return 1;
-	if (match(1, L"string"))
-		return 1;
-	return 0;
+		typ = 1;
+	else if (match(1, L"bool"))
+		typ = 2;
+	else if (match(1, L"float"))
+		typ = 3;
+	else if (match(1, L"string"))
+		typ = 4;
+	else return 0;
+	while (checkShift()) ++array_depth;
+	type_stack.push_back({ typ, array_depth });
+	return 1;
 }
 bool LexemChecker::checkShift() // <сдвиг> 
 {
@@ -139,7 +156,7 @@ bool LexemChecker::checkShift() // <сдвиг>
 	int r = p;
 	if (match(7, L"["))
 	{
-		if (checkPointer())
+		if (checkExpression())
 		{
 			if (match(7, L"]"))
 			{
@@ -517,16 +534,20 @@ bool LexemChecker::checkIf() // <оператор if>
 			runException(L"Expected ending bracket");
 		if (!(checkBlock() || checkFreeOperator()))
 		{
+			pushBlock();
 			if (!(checkOperator() && match(7, L";")))
 				runException(L"Expected operator");
+			popBlock();
 		}
 		if (match(1, L"else"))
 		{
 			if (checkBlock() || checkFreeOperator())
 				return 1;
-			if (checkOperator() && match(7, L";"))
-				return 1;
-			runException(L"Expected operator");
+			pushBlock();
+			if (!(checkOperator() && match(7, L";")))
+				runException(L"Expected operator");
+			popBlock();
+			return 1;
 		}
 		return 1;
 	}
@@ -544,9 +565,11 @@ bool LexemChecker::checkWhile() // <оператор while>
 			runException(L"Expected ending bracket");
 		if (checkBlock() || checkFreeOperator())
 			return 1;
-		if (checkOperator() && match(7, L";"))
-			return 1;
-		runException(L"Expected operator");
+		pushBlock();
+		if (!(checkOperator() && match(7, L";")))
+			runException(L"Expected operator");
+		popBlock();
+		return 1;
 	}
 	return 0;
 }
@@ -554,6 +577,7 @@ bool LexemChecker::checkFor() // <оператор for>
 {
 	if (match(1, L"for"))
 	{
+		pushBlock();
 		if (!match(7, L"("))
 			runException(L"Expected arguments in brackets");
 		checkForOperator();
@@ -567,9 +591,12 @@ bool LexemChecker::checkFor() // <оператор for>
 			runException(L"Expected ending bracket");
 		if (checkBlock() || checkFreeOperator())
 			return 1;
-		if (checkOperator() && match(7, L";"))
-			return 1;
-		runException(L"LExpected operator");
+		pushBlock();
+		if (!(checkOperator() && match(7, L";")))
+			runException(L"LExpected operator");
+		popBlock();
+		return 1;
+
 	}
 	return 0;
 }
@@ -603,6 +630,9 @@ bool LexemChecker::checkDescription() // <описание>
 	{
 		if (!checkName())
 			runException(L"Expected identifier");
+		TYPE typ = type_stack.back();
+		std::wstring nam = name_stack.back();
+		pushId();
 		int var_type = 0;
 		if (match(6, L"="))
 		{
@@ -612,8 +642,10 @@ bool LexemChecker::checkDescription() // <описание>
 		}
 		while (match(7, L","))
 		{
+			type_stack.push_back(typ);
 			if (!checkName())
 				runException(L"Expected identifier");
+			pushId();
 			if (match(6, L"="))
 			{
 				if (!checkExpression())
@@ -624,14 +656,21 @@ bool LexemChecker::checkDescription() // <описание>
 		if (!var_type && match(7, L"("))
 		{
 			bool has_args = 0;
+			std::vector<TYPE>* args = tid_tree_->get_arguments(nam);
+			if (args == nullptr)
+				runException(L"We've found a bug in checkDescription");
 			if (checkType())
 			{
 				has_args = 1;
+				args->push_back(type_stack.back());
+				type_stack.pop_back();
 				while (match(7, L","))
 				{
 					var_type = 2;
 					if (!checkType())
 						runException(L"Expected type");
+					args->push_back(type_stack.back());
+					type_stack.pop_back();
 				}
 				if (!var_type && checkName())
 				{
@@ -640,6 +679,8 @@ bool LexemChecker::checkDescription() // <описание>
 					{
 						if (!checkType())
 							runException(L"Expected type");
+						args->push_back(type_stack.back());
+						type_stack.pop_back();
 						if (!checkName())
 							runException(L"Expected identifier");
 					}
@@ -707,6 +748,27 @@ inline int LexemChecker::type(int p)
 inline std::wstring& LexemChecker::value(int p)
 {
 	return term_[p].second;
+}
+
+void LexemChecker::pushBlock()
+{
+	TID* block = new TID(tid_tree_);
+	tid_tree_->children.push_back(block);
+	tid_tree_ = block;
+}
+
+void LexemChecker::popBlock()
+{
+	if (tid_tree_->parent != nullptr)
+		tid_tree_ = tid_tree_->parent;
+}
+
+void LexemChecker::pushId()
+{
+	if (!tid_tree_->push_id(name_stack.back(), type_stack.back()))
+		runException(L"Identifier '" + name_stack.back() + L"' is already used");
+	name_stack.pop_back();
+	type_stack.pop_back();
 }
 
 void LexemChecker::runException(std::wstring reason)
