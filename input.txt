@@ -1,5 +1,14 @@
-кек функция(кек а, дробкек м)
+int a = 2;
+int b, c = 3;
+if (b < c * a)
 {
+	int d = 2*b, ca = 3;
+	for (int i = 0; i < d; ++i)
+	{
+		d = 3;
+	}
+}
+float f (int fried, int chiled) 
+{
+	out a;
 };
-
-туды функция(функция(а, м), б);

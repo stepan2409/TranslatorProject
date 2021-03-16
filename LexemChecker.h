@@ -83,7 +83,7 @@ private:
 
 // Семантический анализ
 
-
+	bool checkKnown(std::wstring name);
 
 // Вспомогательные функции
 
@@ -95,7 +95,10 @@ private:
 
 	void pushBlock();
 	void popBlock();
-	void pushId();
+	void pushId(std::wstring name, TYPE type);
+
+	std::wstring popName(bool pop = 1);
+	TYPE popType(bool pop = 1);
 
 	void runException(std::wstring reason);
 
