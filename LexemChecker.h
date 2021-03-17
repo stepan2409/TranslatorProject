@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+#include <stack>
 #include "TID.h"
 
 typedef std::pair<int, std::wstring> lexem;
@@ -14,7 +15,7 @@ public:
 
 private:
 
-// Синтаксический анализ
+	// Синтаксический анализ
 
 	bool checkBlock(); // <блок>
 	bool checkUnsigned(); // <беззнак>
@@ -81,11 +82,11 @@ private:
 	bool checkStructure(); // <описание структуры>
 
 
-// Семантический анализ
+	// Семантический анализ
 
-	bool checkKnown(std::wstring name);
+	bool checkKnown(std::wstring name); // известен ли идентификатор?
 
-// Вспомогательные функции
+	// Вспомогательные функции
 
 	bool match(int type, std::wstring word);
 	bool isEnd();
@@ -103,9 +104,9 @@ private:
 	void runException(std::wstring reason);
 
 	std::vector<lexem> term_;
-	TID *tid_tree_;
-	std::vector<TYPE> type_stack;
-	std::vector<std::wstring> name_stack;
+	TID* tid_tree_;
+	std::stack<TYPE> type_stack;
+	std::stack<std::wstring> name_stack;
 	int p = 0;
 };
 

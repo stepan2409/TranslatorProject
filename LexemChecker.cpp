@@ -62,6 +62,7 @@ bool LexemChecker::checkInteger() // <целое>
 	if (isEnd()) return 0;
 	if (type(p) == 3)
 	{
+		type_stack.push(TYPE(TYPES::INT_));
 		++p;
 		return 1;
 	}
@@ -72,6 +73,7 @@ bool LexemChecker::checkFloat() // <десятичное>
 	if (isEnd()) return 0;
 	if (type(p) == 4)
 	{
+		type_stack.push(TYPE(TYPES::FLOAT_));
 		++p;
 		return 1;
 	}
@@ -82,6 +84,7 @@ bool LexemChecker::checkString() // <строка>
 	if (isEnd()) return 0;
 	if (type(p) == 5)
 	{
+		type_stack.push(TYPE(TYPES::STRING_));
 		++p;
 		return 1;
 	}
@@ -89,24 +92,38 @@ bool LexemChecker::checkString() // <строка>
 }
 bool LexemChecker::checkLogic() // <строка> 
 {
-	return match(1, L"true") || match(1, L"false");
+	if (match(1, L"true") || match(1, L"false"))
+	{
+		type_stack.push(TYPE(TYPES::BOOL_));
+		return 1;
+	}
+	return 0;
 }
 bool LexemChecker::checkPointer() // <указатель> 
 {
 	if (isEnd()) return 0;
 	if (checkName())
 	{
-		if (!checkKnown(popName(0)))
-			runException(L"Unknown identifier '" + popName(0) + L"'");
-		else popName();
+		std::wstring nam = popName();
+		if (!checkKnown(nam))
+			runException(L"Unknown identifier '" + nam + L"'");
+		TYPE typ = tid_tree_->get_type(nam);
+		typ.is_adress = 1;
 		checkFuctionCall();
-		while (checkShift());
+		while (checkShift())
+		{
+			if (typ.depth == 0)
+				runException(L"Invalid type for array subscript");
+			--typ.depth;
+		}
+
 		/*if (match(7, L".")) // раскомментить, чтобы включить структуры
 		{
 			if (checkPointer())
 				return 1;
 			runException(L"Invalid variable path\n");
 		}*/
+		type_stack.push(typ);
 		return 1;
 	}
 	return 0;
@@ -116,7 +133,7 @@ bool LexemChecker::checkName() // <имя>
 	if (isEnd()) return 0;
 	if (type(p) == 2)
 	{
-		name_stack.push_back(term_[p].second);
+		name_stack.push(term_[p].second);
 		++p;
 		return 1;
 	}
@@ -140,7 +157,7 @@ bool LexemChecker::checkNames() // <имена>
 bool LexemChecker::checkType() // <тип> 
 {
 	if (isEnd()) return 0;
-	TYPES typ = TYPES::UNKNOWN; 
+	TYPES typ = TYPES::UNKNOWN;
 	short array_depth = 0;
 	if (match(1, L"int"))
 		typ = TYPES::INT_;
@@ -152,7 +169,7 @@ bool LexemChecker::checkType() // <тип>
 		typ = TYPES::STRING_;
 	else return 0;
 	while (checkShift()) ++array_depth;
-	type_stack.push_back({ typ, array_depth });
+	type_stack.push(TYPE(typ, array_depth));
 	return 1;
 }
 bool LexemChecker::checkShift() // <сдвиг> 
@@ -163,6 +180,7 @@ bool LexemChecker::checkShift() // <сдвиг>
 	{
 		if (checkExpression())
 		{
+			popType();
 			if (match(7, L"]"))
 			{
 				return 1;
@@ -175,7 +193,7 @@ bool LexemChecker::checkShift() // <сдвиг>
 
 bool LexemChecker::checkSign1() // <знак 1> 
 {
-	return match(6, L"=") || match(6, L"+=") || match(6, L"-=") || match(6, L"*=") 
+	return match(6, L"=") || match(6, L"+=") || match(6, L"-=") || match(6, L"*=")
 		|| match(6, L"/=") || match(6, L"|=") || match(6, L"&=");
 }
 bool LexemChecker::checkSign2() // <знак 2> 
@@ -235,7 +253,7 @@ bool LexemChecker::checkSign13() // <знак 13>
 }
 bool LexemChecker::checkSign14() // <знак 14> 
 {
-	return match(6, L"+") || match(6, L"+");
+	return match(6, L"+") || match(6, L"-");
 }
 bool LexemChecker::checkSign15() // <знак 15> 
 {
@@ -253,6 +271,23 @@ bool LexemChecker::checkExpression() // <выражение>
 		{
 			if (!checkExp2())
 				runException(L"Expected value in expression");
+			TYPE type2 = popType();
+			TYPE type1 = popType();
+			if (!type1.is_adress)
+				runException(L"Left value required as left operand of assignment");
+			type2.is_adress = 0;
+			if (type1.depth > 0 || type2.depth > 0)
+			{
+				if (type1 == type2)
+				{
+					type_stack.push(type1);
+					continue;
+				}
+				runException(L"Incompatible types in expression");
+			}
+			if (type1 != STRING_TYPE && type1 != BOOL_TYPE && type2 == STRING_TYPE)
+				runException(L"Incompatible types in expression");
+			type_stack.push(BOOL_TYPE);
 		}
 		return 1;
 	}
@@ -266,6 +301,13 @@ bool LexemChecker::checkExp2() // <выр 2>
 		{
 			if (!checkExp3())
 				runException(L"Expected value in expression");
+			TYPE type2 = popType();
+			TYPE type1 = popType();
+			type1.is_adress = 0;
+			type2.is_adress = 0;
+			if (type1.depth > 0 || type2.depth > 0)
+				runException(L"Incompatible types in expression");
+			type_stack.push(BOOL_TYPE);
 		}
 		return 1;
 	}
@@ -279,6 +321,13 @@ bool LexemChecker::checkExp3() // <выр 3>
 		{
 			if (!checkExp4())
 				runException(L"Expected value in expression");
+			TYPE type2 = popType();
+			TYPE type1 = popType();
+			type1.is_adress = 0;
+			type2.is_adress = 0;
+			if (type1.depth > 0 || type2.depth > 0)
+				runException(L"Incompatible types in expression");
+			type_stack.push(BOOL_TYPE);
 		}
 		return 1;
 	}
@@ -292,6 +341,20 @@ bool LexemChecker::checkExp4() // <выр 4>
 		{
 			if (!checkExp5())
 				runException(L"Expected value in expression");
+			TYPE type2 = popType();
+			TYPE type1 = popType();
+			type1.is_adress = 0;
+			type2.is_adress = 0;
+			if (type1.depth > 0 || type2.depth > 0)
+				runException(L"Incompatible types in expression");
+			TYPE exp_type = BOOL_TYPE;
+			if (type1 == FLOAT_TYPE || type1 == STRING_TYPE)
+				runException(L"Incompatible types in expression");
+			if (type2 == FLOAT_TYPE || type2 == STRING_TYPE)
+				runException(L"Incompatible types in expression");
+			if (type1 == INT_TYPE || type2 == INT_TYPE)
+				exp_type = INT_TYPE;
+			type_stack.push(exp_type);
 		}
 		return 1;
 	}
@@ -305,6 +368,20 @@ bool LexemChecker::checkExp5() // <выр 5>
 		{
 			if (!checkExp6())
 				runException(L"Expected value in expression");
+			TYPE type2 = popType();
+			TYPE type1 = popType();
+			type1.is_adress = 0;
+			type2.is_adress = 0;
+			if (type1.depth > 0 || type2.depth > 0)
+				runException(L"Incompatible types in expression");
+			TYPE exp_type = BOOL_TYPE;
+			if (type1 == FLOAT_TYPE || type1 == STRING_TYPE)
+				runException(L"Incompatible types in expression");
+			if (type2 == FLOAT_TYPE || type2 == STRING_TYPE)
+				runException(L"Incompatible types in expression");
+			if (type1 == INT_TYPE || type2 == INT_TYPE)
+				exp_type = INT_TYPE;
+			type_stack.push(exp_type);
 		}
 		return 1;
 	}
@@ -318,6 +395,20 @@ bool LexemChecker::checkExp6() // <выр 6>
 		{
 			if (!checkExp7())
 				runException(L"Expected value in expression");
+			TYPE type2 = popType();
+			TYPE type1 = popType();
+			type1.is_adress = 0;
+			type2.is_adress = 0;
+			if (type1.depth > 0 || type2.depth > 0)
+				runException(L"Incompatible types in expression");
+			TYPE exp_type = BOOL_TYPE;
+			if (type1 == FLOAT_TYPE || type1 == STRING_TYPE)
+				runException(L"Incompatible types in expression");
+			if (type2 == FLOAT_TYPE || type2 == STRING_TYPE)
+				runException(L"Incompatible types in expression");
+			if (type1 == INT_TYPE || type2 == INT_TYPE)
+				exp_type = INT_TYPE;
+			type_stack.push(exp_type);
 		}
 		return 1;
 	}
@@ -331,6 +422,15 @@ bool LexemChecker::checkExp7() // <выр 7>
 		{
 			if (!checkExp8())
 				runException(L"Expected value in expression");
+			TYPE type2 = popType();
+			TYPE type1 = popType();
+			type1.is_adress = 0;
+			type2.is_adress = 0;
+			if (type1.depth > 0 || type2.depth > 0)
+				runException(L"Incompatible types in expression");
+			if ((type1 == STRING_TYPE) != (type2 == STRING_TYPE))
+				runException(L"Incompatible types in expression");
+			type_stack.push(BOOL_TYPE);
 		}
 		return 1;
 	}
@@ -344,6 +444,15 @@ bool LexemChecker::checkExp8() // <выр 8>
 		{
 			if (!checkExp9())
 				runException(L"Expected value in expression");
+			TYPE type2 = popType();
+			TYPE type1 = popType();
+			type1.is_adress = 0;
+			type2.is_adress = 0;
+			if (type1.depth > 0 || type2.depth > 0)
+				runException(L"Incompatible types in expression");
+			if ((type1 == STRING_TYPE) != (type2 == STRING_TYPE))
+				runException(L"Incompatible types in expression");
+			type_stack.push(BOOL_TYPE);
 		}
 		return 1;
 	}
@@ -357,6 +466,19 @@ bool LexemChecker::checkExp9() // <выр 9>
 		{
 			if (!checkExp10())
 				runException(L"Expected value in expression");
+			TYPE type2 = popType();
+			TYPE type1 = popType();
+			type1.is_adress = 0;
+			type2.is_adress = 0;
+			if (type1 == BOOL_TYPE)
+				type1 = INT_TYPE;
+			if (type2 == BOOL_TYPE)
+				type2 = INT_TYPE;
+			if (type1 != INT_TYPE || type2 == INT_TYPE)
+				runException(L"Incompatible types in expression");
+			if (type1.depth > 0 || type2.depth > 0)
+				runException(L"Incompatible types in expression");
+			type_stack.push(INT_TYPE);
 		}
 		return 1;
 	}
@@ -370,6 +492,18 @@ bool LexemChecker::checkExp10() // <выр 10>
 		{
 			if (!checkExp11())
 				runException(L"Expected value in expression");
+			TYPE type2 = popType();
+			TYPE type1 = popType();
+			type1.is_adress = 0;
+			type2.is_adress = 0;
+			if ((type1 == STRING_TYPE) != (type2 == STRING_TYPE))
+				runException(L"Incompatible types in expression");
+			TYPE exp_type = INT_TYPE;
+			if (type1.depth > 0 || type2.depth > 0)
+				runException(L"Incompatible types in expression");
+			if (type1 == FLOAT_TYPE || type2 == FLOAT_TYPE)
+				exp_type = FLOAT_TYPE;
+			type_stack.push(exp_type);
 		}
 		return 1;
 	}
@@ -383,6 +517,18 @@ bool LexemChecker::checkExp11() // <выр 11>
 		{
 			if (!checkExp12())
 				runException(L"Expected value in expression");
+			TYPE type2 = popType();
+			TYPE type1 = popType();
+			type1.is_adress = 0;
+			type2.is_adress = 0;
+			if (type1 == STRING_TYPE || type2 == STRING_TYPE)
+				runException(L"Incompatible types in expression");
+			TYPE exp_type = INT_TYPE;
+			if (type1.depth > 0 || type2.depth > 0)
+				runException(L"Incompatible types in expression");
+			if (type1 == FLOAT_TYPE || type2 == FLOAT_TYPE)
+				exp_type = FLOAT_TYPE;
+			type_stack.push(exp_type);
 		}
 		return 1;
 	}
@@ -394,6 +540,17 @@ bool LexemChecker::checkExp12() // <выр 12>
 	while (checkSign12())
 		sgn = 1;
 	bool exp = checkExp13();
+	if (sgn && exp)
+	{
+		TYPE type = popType();
+		type.is_adress = 0;
+		if (type == BOOL_TYPE)
+			type_stack.push(type);
+		if (type == INT_TYPE || type == FLOAT_TYPE)
+			type_stack.push(BOOL_TYPE);
+		else runException(L"Incorrect type in expression");
+		return 1;
+	}
 	if (sgn && !exp)
 		runException(L"Expected value after sign");
 	return exp;
@@ -402,8 +559,21 @@ bool LexemChecker::checkExp13() // <выр 13>
 {
 	bool sgn = 0;
 	while (checkSign13())
+	{
 		sgn = 1;
+	}
 	bool exp = checkExp14();
+	if (sgn && exp)
+	{
+		TYPE type = popType();
+		if (type == INT_TYPE || type == BOOL_TYPE)
+		{
+			type.is_adress = 0;
+			type_stack.push(type);
+			return 1;
+		}
+		else runException(L"Incorrect type in expression");
+	}
 	if (sgn && !exp)
 		runException(L"Expected value after sign");
 	return exp;
@@ -412,8 +582,21 @@ bool LexemChecker::checkExp14() // <выр 14>
 {
 	bool sgn = 0;
 	while (checkSign14())
+	{
 		sgn = 1;
+	}
 	bool exp = checkExp15();
+	if (sgn && exp)
+	{
+		TYPE type = popType();
+		if (type == INT_TYPE || type == BOOL_TYPE || type == FLOAT_TYPE)
+		{
+			type.is_adress = 0;
+			type_stack.push(type);
+			return 1;
+		}
+		else runException(L"Incorrect type in expression");
+	}
 	if (sgn && !exp)
 		runException(L"Expected value after sign");
 	return exp;
@@ -422,8 +605,23 @@ bool LexemChecker::checkExp15() // <выр 15>
 {
 	bool sgn = 0;
 	while (checkSign15())
+	{
 		sgn = 1;
+	}
 	bool exp = checkExp16();
+	if (sgn && exp)
+	{
+		TYPE type = popType(0);
+		if (!type.is_adress)
+			runException(L"This isn't a variable");
+		if (type == INT_TYPE)
+			return 1;
+		if (type == BOOL_TYPE)
+			return 1;
+		if (type == FLOAT_TYPE)
+			return 1;
+		runException(L"Incorrect type in expression");
+	}
 	if (sgn && !exp)
 		runException(L"Expected value after sign");
 	return exp;
@@ -432,7 +630,20 @@ bool LexemChecker::checkExp16() // <выр 16>
 {
 	if (checkValue())
 	{
-		while (checkSign16());
+		if (checkSign16())
+		{
+			while (checkSign16());
+			TYPE type = popType(0);
+			if (!type.is_adress)
+				runException(L"This isn't a variable");
+			if (type == INT_TYPE)
+				return 1;
+			if (type == BOOL_TYPE)
+				return 1;
+			if (type == FLOAT_TYPE)
+				return 1;
+			runException(L"Incorrect type in expression");
+		}
 		return 1;
 	}
 	return 0;
@@ -451,10 +662,12 @@ bool LexemChecker::checkFuctionCall() // <результат функции>
 	{
 		if (checkExpression())
 		{
+			popType();
 			while (match(7, L","))
 			{
 				if (!checkExpression())
 					runException(L"Expected argument");
+				popType();
 			}
 		}
 		if (!match(7, L")"))
@@ -465,6 +678,7 @@ bool LexemChecker::checkFuctionCall() // <результат функции>
 }
 bool LexemChecker::checkValue() // <значение> 
 {
+
 	if (checkVariable() || checkConstant())
 		return 1;
 	if (match(7, L"("))
@@ -505,7 +719,12 @@ bool LexemChecker::checkOperators()
 }
 bool LexemChecker::checkExpOperator() // <оператор выражения> 
 {
-	return checkExpression();
+	if (checkExpression())
+	{
+		popType();
+		return 1;
+	}
+	return 0;
 }
 bool LexemChecker::checkStreamOperator() // <оператор потока> 
 {
@@ -519,6 +738,7 @@ bool LexemChecker::checkStreamOperator() // <оператор потока>
 	{
 		if (!checkExpression())
 			runException(L"Expected expression");
+		popType();
 		return 1;
 	}
 	return 0;
@@ -535,6 +755,7 @@ bool LexemChecker::checkIf() // <оператор if>
 			runException(L"Expected arguments in brackets");
 		if (!checkExpression())
 			runException(L"Expected expression");
+		popType();
 		if (!match(7, L")"))
 			runException(L"Expected ending bracket");
 		if (!(checkBlock() || checkFreeOperator()))
@@ -566,6 +787,7 @@ bool LexemChecker::checkWhile() // <оператор while>
 			runException(L"Expected arguments in brackets");
 		if (!checkExpression())
 			runException(L"Expected expression");
+		popType();
 		if (!match(7, L")"))
 			runException(L"Expected ending bracket");
 		if (checkBlock() || checkFreeOperator())
@@ -617,6 +839,7 @@ bool LexemChecker::checkGoto() // <оператор перехода>
 	{
 		if (!checkExpression())
 			runException(L"Expected expression");
+		popType();
 		return 1;
 	}
 	if (match(1, L"goto"))
@@ -653,6 +876,7 @@ bool LexemChecker::checkDescription() // <описание>
 			{
 				if (!checkExpression())
 					runException(L"Expected expression");
+				popType();
 				var_type = 1;
 			}
 			while (match(7, L","))
@@ -664,6 +888,7 @@ bool LexemChecker::checkDescription() // <описание>
 				{
 					if (!checkExpression())
 						runException(L"Expected expression");
+					popType();
 				}
 				var_type = 1;
 			}
@@ -674,7 +899,7 @@ bool LexemChecker::checkDescription() // <описание>
 			TID* last_tid = tid_tree_;
 			pushBlock();
 			bool has_args = 0, temp_step = 0;
-			std::vector<TYPE> *args = tid_tree_->get_arguments(nam);
+			std::vector<TYPE>* args = tid_tree_->get_arguments(nam);
 			if (args == nullptr)
 				runException(L"We've found a bug in checkDescription");
 			if (checkType())
@@ -734,7 +959,11 @@ bool LexemChecker::checkDescription() // <описание>
 			if (!match(7, L")"))
 				runException(L"Expected ending bracket");
 			if (!var_type && !has_args)
-				checkBlock();
+			{
+				if (!checkBlock())
+					runException(L"Expected description");
+				last_tid->push_code(nam);
+			}
 			popBlock();
 		}
 		return 1;
@@ -747,7 +976,12 @@ bool LexemChecker::checkFreeOperator()
 }
 bool LexemChecker::checkForOperator()
 {
-	return checkExpression() || checkDescription();
+	if (checkExpression())
+	{
+		popType();
+		return 1;
+	}
+	return checkDescription();
 }
 bool LexemChecker::checkStructure() // <описание структуры> 
 {
@@ -822,8 +1056,8 @@ std::wstring LexemChecker::popName(bool pop)
 {
 	if (name_stack.empty())
 		runException(L"We've found a bug in popName");
-	auto res = name_stack.back();
-	if (pop) name_stack.pop_back();
+	auto res = name_stack.top();
+	if (pop) name_stack.pop();
 	return res;
 }
 
@@ -831,8 +1065,8 @@ TYPE LexemChecker::popType(bool pop)
 {
 	if (type_stack.empty())
 		runException(L"We've found a bug in popName");
-	auto res = type_stack.back();
-	if (pop) type_stack.pop_back();
+	auto res = type_stack.top();
+	if (pop) type_stack.pop();
 	return res;
 }
 

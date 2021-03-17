@@ -43,12 +43,12 @@ std::wstring TID::get_any_template()
 	return L"";
 }
 
-bool TID::search_id(std::wstring& name)
+bool TID::search_id(std::wstring & name)
 {
 	return types_.find(name) != types_.end();
 }
 
-bool TID::deepsearch_id(std::wstring& name)
+bool TID::deepsearch_id(std::wstring & name)
 {
 	if (types_.find(name) != types_.end())
 		return 1;
@@ -57,15 +57,15 @@ bool TID::deepsearch_id(std::wstring& name)
 	return 0;
 }
 
-bool TID::push_id(std::wstring& name, TYPE type)
+bool TID::push_id(std::wstring & name, TYPE type)
 {
-	if(deepsearch_id(name))
+	if (deepsearch_id(name))
 		return 0;
 	types_[name] = type;
 	return 1;
 }
 
-bool TID::is_template(std::wstring& name, TYPE type)
+bool TID::is_template(std::wstring & name, TYPE type)
 {
 	if (func_order_.find(name) == func_order_.end())
 		return 0;
@@ -74,7 +74,7 @@ bool TID::is_template(std::wstring& name, TYPE type)
 	return func_status_[func_order_[name]];
 }
 
-bool TID::push_code(std::wstring& name)
+bool TID::push_code(std::wstring & name)
 {
 	if (func_order_.find(name) == func_order_.end())
 		return 0;
@@ -84,7 +84,7 @@ bool TID::push_code(std::wstring& name)
 	return 1;
 }
 
-TYPE TID::get_type(std::wstring& name)
+TYPE TID::get_type(std::wstring & name)
 {
 	if (search_id(name))
 		return types_[name];

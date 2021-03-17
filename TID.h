@@ -13,8 +13,36 @@ enum TYPES
 	ADRESS_ = 5
 };
 
-typedef std::pair <TYPES, int > TYPE;
-#define NO_TYPE std::make_pair(TYPES::UNKNOWN, 0);
+struct TYPE {
+	TYPES basic;
+	short depth;
+	bool is_adress;
+	TYPE(TYPES basic, short depth = 0, bool is_adress = 0) : basic(basic), depth(depth), is_adress(is_adress)
+	{
+
+	}
+	TYPE() : basic(TYPES::UNKNOWN), depth(0), is_adress(0) { };
+	void operator = (const TYPE& type)
+	{
+		basic = type.basic;
+		depth = type.depth;
+		is_adress = is_adress;
+	}
+	bool operator == (const TYPE type)
+	{
+		return basic == type.basic &&
+			depth == type.depth;
+	}
+	bool operator != (TYPE type)
+	{
+		return !(*this == type);
+	}
+};
+#define NO_TYPE TYPE(TYPES::UNKNOWN, 0, 0)
+#define INT_TYPE TYPE(TYPES::INT_, 0, 0)
+#define FLOAT_TYPE TYPE(TYPES::FLOAT_, 0, 0)
+#define BOOL_TYPE TYPE(TYPES::BOOL_, 0, 0)
+#define STRING_TYPE TYPE(TYPES::STRING_, 0, 0)
 // TYPE {ID, ARRAY_DEPTH} 
 // ID: 0 - UNKNOWN, 1 - INT, 2 - BOOL, 3 - FLOAT, 4 - STRING, [5, +INF) - CUSTOM
 
@@ -29,7 +57,7 @@ public:
 	bool is_template(std::wstring& name, TYPE type);
 	bool push_code(std::wstring& name);
 	TYPE get_type(std::wstring& name);
-	std::vector<TYPE>* get_arguments(std::wstring & name);
+	std::vector<TYPE>* get_arguments(std::wstring& name);
 
 	std::wstring get_any_template();
 

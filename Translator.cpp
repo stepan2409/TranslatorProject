@@ -11,6 +11,8 @@
 #include <map>
 #include "LexemChecker.h"
 
+
+const int MAX_ADDING = 10;
 typedef std::pair<int, std::wstring> lexem;
 std::locale rusLoc = std::locale("Russian");
 
@@ -211,6 +213,7 @@ void getLexemsUsingMatch (std::wstring text, std::vector<std::wregex>& regexes, 
 			return;
 		int type = 0;
 		std::wstring name = L"";
+		int adding = MAX_ADDING;
 		bool weFoundLexem = false;
 		while (end < text.size ()) {
 			int subType = 0;
@@ -225,12 +228,14 @@ void getLexemsUsingMatch (std::wstring text, std::vector<std::wregex>& regexes, 
 						type = i, name = token.str ();
 						weFoundLexem = true;
 						subType = i;
+						adding = MAX_ADDING;
 					}
 				}
 			}
-			if (subType == 0 && weFoundLexem) {
+			if (adding == 0 && weFoundLexem) {
 				break;
 			}
+			--adding;
 			++end;
 		}
 		bool isundefined = (type == 0);

@@ -1,14 +1,6 @@
-int a = 2;
-int b, c = 3;
-if (b < c * a)
-{
-	int d = 2*b, ca = 3;
-	for (int i = 0; i < d; ++i)
-	{
-		d = 3;
-	}
-}
-float f (int fried, int chiled) 
-{
-	out a;
+string main() {
+int b, g = 5.2;
+string a;
+g += 2;
+a + "" = a;
 };
