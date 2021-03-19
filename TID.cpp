@@ -57,6 +57,11 @@ bool TID::deepsearch_id(std::wstring & name)
 	return 0;
 }
 
+void TID::set_return_type(TYPE type)
+{
+	return_type = type;
+}
+
 bool TID::push_id(std::wstring & name, TYPE type)
 {
 	if (deepsearch_id(name))
@@ -67,11 +72,24 @@ bool TID::push_id(std::wstring & name, TYPE type)
 
 bool TID::is_template(std::wstring & name, TYPE type)
 {
-	if (func_order_.find(name) == func_order_.end())
-		return 0;
-	if (types_[name] != type)
-		return 0;
-	return func_status_[func_order_[name]];
+	if (func_order_.find(name) != func_order_.end())
+	{
+		if (types_[name] != type)
+			return 0;
+		return func_status_[func_order_[name]];
+	}
+	if (parent != nullptr)
+		return parent->is_template(name, type);
+	return 0;
+}
+
+bool TID::is_function(std::wstring& name)
+{
+	if (func_order_.find(name) != func_order_.end())
+		return 1;
+	if (parent != nullptr)
+		return parent->is_function(name);
+	return 0;
 }
 
 bool TID::push_code(std::wstring & name)
@@ -90,5 +108,14 @@ TYPE TID::get_type(std::wstring & name)
 		return types_[name];
 	if (deepsearch_id(name))
 		return parent->get_type(name);
+	return NO_TYPE;
+}
+
+TYPE TID::get_return_type()
+{
+	if (return_type != NO_TYPE)
+		return return_type;
+	if (parent != nullptr)
+		return parent->get_return_type();
 	return NO_TYPE;
 }

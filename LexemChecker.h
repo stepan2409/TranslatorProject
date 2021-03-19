@@ -65,7 +65,7 @@ private:
 	bool checkExp16(); // <выр 16>
 	bool checkVariable(); // <переменная>
 	bool checkConstant(); // <константа>
-	bool checkFuctionCall(); // <результат функции>
+	 int checkFuctionCall(); // <результат функции>
 	bool checkValue(); // <значение>
 	bool checkOperator(); // <оператор>
 	bool checkOperators(); // <операторы>
@@ -85,6 +85,7 @@ private:
 	// Семантический анализ
 
 	bool checkKnown(std::wstring name); // известен ли идентификатор?
+	bool tryCast(TYPE type1, TYPE type2);
 
 	// Вспомогательные функции
 

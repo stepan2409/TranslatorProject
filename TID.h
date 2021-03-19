@@ -37,6 +37,20 @@ struct TYPE {
 	{
 		return !(*this == type);
 	}
+	std::wstring to_str() {
+		std::wstring res;
+		if (basic == TYPES::INT_)
+			res = L"int";
+		else if (basic == TYPES::BOOL_)
+			res = L"bool_";
+		else if (basic == TYPES::FLOAT_)
+			res = L"float";
+		else if (basic == TYPES::STRING_)
+			res = L"string";
+		else res = L"unknown";
+		res += std::wstring(depth, '*');
+		return res;
+	}
 };
 #define NO_TYPE TYPE(TYPES::UNKNOWN, 0, 0)
 #define INT_TYPE TYPE(TYPES::INT_, 0, 0)
@@ -53,10 +67,13 @@ public:
 	TID(TID* parent);
 	~TID();
 
+	void set_return_type(TYPE type);
 	bool push_id(std::wstring& name, TYPE type);
 	bool is_template(std::wstring& name, TYPE type);
+	bool is_function(std::wstring& name);
 	bool push_code(std::wstring& name);
 	TYPE get_type(std::wstring& name);
+	TYPE get_return_type();
 	std::vector<TYPE>* get_arguments(std::wstring& name);
 
 	std::wstring get_any_template();
@@ -66,6 +83,8 @@ public:
 private:
 
 	std::map<std::wstring, TYPE> types_;
+	TYPE return_type = NO_TYPE;
+
 	std::map<std::wstring, int> func_order_;
 	std::vector<std::vector<TYPE> > func_args_;
 	std::vector<bool> func_status_;
