@@ -64,7 +64,7 @@ void TID::set_return_type(TYPE type)
 
 bool TID::push_id(std::wstring & name, TYPE type)
 {
-	if (deepsearch_id(name))
+	if (search_id(name))
 		return 0;
 	types_[name] = type;
 	return 1;
@@ -90,6 +90,11 @@ bool TID::is_function(std::wstring& name)
 	if (parent != nullptr)
 		return parent->is_function(name);
 	return 0;
+}
+
+bool TID::is_current(std::wstring& name)
+{
+	return types_.find(name) != types_.end();
 }
 
 bool TID::push_code(std::wstring & name)

@@ -110,13 +110,17 @@ bool LexemChecker::checkPointer() // <указатель>
 		TYPE typ = tid_tree_->get_type(nam);
 		typ.is_adress = 1;
 		int arg_count = checkFuctionCall();
+		if (tid_tree_->is_template(nam, typ))
+			runException(L"Fuction must be decripted before call");
 		if (arg_count)
 		{
 			if (arg_count == -1)
 				arg_count = 0;
+			if (!tid_tree_->is_function(nam))
+				runException(L"Identifier isn't a function");
 			std::vector<TYPE>* args = tid_tree_->get_arguments(nam);
 			if (args == nullptr)
-				runException(L"Identifier isn't a function");
+				runException(L"We have a bug in checkPointer");
 			if (arg_count < args->size())
 				runException(L"Too few arguments to function");
 			bool too_args = arg_count > args->size();
@@ -134,7 +138,6 @@ bool LexemChecker::checkPointer() // <указатель>
 		}
 		else if (tid_tree_->is_function(nam))
 			runException(L"Required function call");
-
 		while (checkShift())
 		{
 			if (typ.depth == 0)
@@ -644,10 +647,12 @@ bool LexemChecker::checkExp16() // <выр 16>
 {
 	if (checkValue())
 	{
+		TYPE type = popType(0);
+		if (type == VOID_TYPE || type == ADRESS_TYPE)
+			runException(L"Type '" + type.to_str() + L"' is prohibited in expression");
 		if (checkSign16())
 		{
 			while (checkSign16());
-			TYPE type = popType(0);
 			if (!type.is_adress)
 				runException(L"This isn't a variable");
 			if (type == INT_TYPE)
@@ -868,7 +873,7 @@ bool LexemChecker::checkGoto() // <оператор перехода>
 			runException(L"Expected identifier");
 		if (!checkKnown(popName(0)))
 			runException(L"Unknown label '" + popName(0) + L"'");
-		else popName();
+		popName();
 		return 1;
 	}
 	if (match(1, L"label"))
@@ -889,6 +894,13 @@ bool LexemChecker::checkDescription() // <описание>
 		int var_type = 0;
 		std::wstring nam = popName(0);
 		bool is_temp = tid_tree_->is_template(nam, popType(0));
+		if (tid_tree_->is_function(nam))
+		{
+			if (!tid_tree_->is_current(nam))
+				runException(L"Function can be descripted only in the same block");
+			if (!is_temp)
+				runException(L"Fuction is already descripted");
+		}
 		TYPE typ = popType();
 		if (!is_temp)
 		{
@@ -931,8 +943,13 @@ bool LexemChecker::checkDescription() // <описание>
 			{
 				has_args = 1;
 				TYPE first_type = popType();
-				if (is_temp && args->size() > 0)
-					tryCast(*(args->begin()), first_type);
+				if (is_temp)
+				{
+					if (args->size() == 0)
+						runException(L"Too many arguments in description");
+					if (*(args->begin()) != first_type)
+						runException(L"Argument 1 has wrong type");
+				}
 				else args->push_back(first_type);
 				while (match(7, L","))
 				{
@@ -991,12 +1008,10 @@ bool LexemChecker::checkDescription() // <описание>
 				runException(L"Expected ending bracket");
 			if (!var_type && !has_args)
 			{
-				if (!checkBlock())
-				{
-					if (is_temp)
-						runException(L"Expected description");
-				}
-				last_tid->push_code(nam);
+				if (checkBlock())
+					last_tid->push_code(nam);
+				else if (is_temp)
+					runException(L"Expected description");
 			}
 			popBlock();
 		}

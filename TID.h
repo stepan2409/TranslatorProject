@@ -10,7 +10,8 @@ enum TYPES
 	BOOL_ = 2,
 	FLOAT_ = 3,
 	STRING_ = 4,
-	ADRESS_ = 5
+	ADRESS_ = 5,
+	VOID_ = 6
 };
 
 struct TYPE {
@@ -47,6 +48,10 @@ struct TYPE {
 			res = L"float";
 		else if (basic == TYPES::STRING_)
 			res = L"string";
+		else if (basic == TYPES::VOID_)
+			res = L"void";
+		else if (basic == TYPES::ADRESS_)
+			res = L"label";
 		else res = L"unknown";
 		res += std::wstring(depth, '*');
 		return res;
@@ -57,6 +62,8 @@ struct TYPE {
 #define FLOAT_TYPE TYPE(TYPES::FLOAT_, 0, 0)
 #define BOOL_TYPE TYPE(TYPES::BOOL_, 0, 0)
 #define STRING_TYPE TYPE(TYPES::STRING_, 0, 0)
+#define ADRESS_TYPE TYPE(TYPES::ADRESS_, 0, 0)
+#define VOID_TYPE TYPE(TYPES::VOID_, 0, 0)
 // TYPE {ID, ARRAY_DEPTH} 
 // ID: 0 - UNKNOWN, 1 - INT, 2 - BOOL, 3 - FLOAT, 4 - STRING, [5, +INF) - CUSTOM
 
@@ -71,6 +78,7 @@ public:
 	bool push_id(std::wstring& name, TYPE type);
 	bool is_template(std::wstring& name, TYPE type);
 	bool is_function(std::wstring& name);
+	bool is_current(std::wstring& name);
 	bool push_code(std::wstring& name);
 	TYPE get_type(std::wstring& name);
 	TYPE get_return_type();
