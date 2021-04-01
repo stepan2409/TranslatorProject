@@ -165,8 +165,8 @@ bool LexemChecker::checkPointer() // <указатель>
 			if (code_line == -1)
 				runException(L"We have a bug in checkPointer");
 			polis_.push_back({ LEX_INT, std::to_wstring(code_line) });
-			polis_.push_back({ LEX_OPERATION, L"push-stack" });
 			polis_.push_back({ LEX_OPERATION, L"!" });
+			polis_.push_back({ LEX_OPERATION, L"push-stack" });
 		}
 		else
 		{
@@ -1090,7 +1090,7 @@ bool LexemChecker::checkDescription() // <описание>
 				pushId(popName(), typ);
 				if (match(6, L"="))
 				{
-					polis_.push_back(tid_tree_->get_adress(nam2));
+					polis_.push_back(tid_tree_->get_adress(nam));
 					if (!checkExpression())
 						runException(L"Expected expression");
 					TYPE exp_type = popType();
