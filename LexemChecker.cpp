@@ -23,7 +23,27 @@ bool LexemChecker::checkProgram() // <программа>
 	if (p != term_.size())
 		runException(L"Expected operator");
 	popBlock();
+	if (break_stack.size() > 0)
+		runException(L"Operator 'break' must be used in cycle");
+	if (continue_stack.size() > 0)
+		runException(L"Operator 'continue' must be used in cycle");
+	while (goto_stack.size())
+	{
+		if (label_map.find(goto_stack.top().second) == label_map.end())
+			runException(L"Label '" + goto_stack.top().second + L"' must be defined");
+		int code_line = label_map[goto_stack.top().second];
+		polis_[goto_stack.top().first].second = std::to_wstring(code_line);
+		goto_stack.pop();
+	}
 	return 1;
+}
+TID* LexemChecker::get_tree()
+{
+	return tid_tree_;
+}
+std::vector<lexem>& LexemChecker::get_polis()
+{
+	return polis_;
 }
 bool LexemChecker::checkBlock() // <блок>
 {
@@ -63,6 +83,7 @@ bool LexemChecker::checkInteger() // <целое>
 	if (type(p) == 3)
 	{
 		type_stack.push(TYPE(TYPES::INT_));
+		polis_.push_back({ LEX_INT, term_[p].second });
 		++p;
 		return 1;
 	}
@@ -74,6 +95,7 @@ bool LexemChecker::checkFloat() // <десятичное>
 	if (type(p) == 4)
 	{
 		type_stack.push(TYPE(TYPES::FLOAT_));
+		polis_.push_back({ LEX_FLOAT, term_[p].second });
 		++p;
 		return 1;
 	}
@@ -85,6 +107,7 @@ bool LexemChecker::checkString() // <строка>
 	if (type(p) == 5)
 	{
 		type_stack.push(TYPE(TYPES::STRING_));
+		polis_.push_back({ LEX_STRING, term_[p].second });
 		++p;
 		return 1;
 	}
@@ -95,6 +118,7 @@ bool LexemChecker::checkLogic() // <строка>
 	if (match(1, L"true") || match(1, L"false"))
 	{
 		type_stack.push(TYPE(TYPES::BOOL_));
+		polis_.push_back({ LEX_BOOL, term_[p - 1].second });
 		return 1;
 	}
 	return 0;
@@ -107,9 +131,49 @@ bool LexemChecker::checkPointer() // <указатель>
 		std::wstring nam = popName();
 		if (!checkKnown(nam))
 			runException(L"Unknown identifier '" + nam + L"'");
+
 		TYPE typ = tid_tree_->get_type(nam);
 		typ.is_adress = 1;
-		checkFuctionCall();
+		int arg_count = checkFuctionCall();
+		if (tid_tree_->is_template(nam, typ))
+			runException(L"Fuction must be decripted before call");
+		if (arg_count)
+		{
+			if (arg_count == -1)
+				arg_count = 0;
+			if (!tid_tree_->is_function(nam))
+				runException(L"Identifier isn't a function");
+			std::vector<TYPE> * args = tid_tree_->get_arguments(nam);
+			if (args == nullptr)
+				runException(L"We have a bug in checkPointer");
+			if (arg_count < args->size())
+				runException(L"Too few arguments to function");
+			bool too_args = arg_count > args->size();
+			while (arg_count > args->size())
+			{
+				--arg_count;
+				popType();
+			}
+			for (int i = args->size() - 1; i >= 0; --i)
+			{
+				tryCast(*(args->begin() + i), popType());
+
+			}
+			if (too_args)
+				runException(L"Too many arguments in function");
+			int code_line = tid_tree_->get_code(nam);
+			if (code_line == -1)
+				runException(L"We have a bug in checkPointer");
+			polis_.push_back({ LEX_INT, std::to_wstring(code_line) });
+			polis_.push_back({ LEX_OPERATION, L"push-stack" });
+			polis_.push_back({ LEX_OPERATION, L"!" });
+		}
+		else
+		{
+			if (tid_tree_->is_function(nam))
+				runException(L"Required function call");
+			polis_.push_back(tid_tree_->get_adress(nam));
+		}
 		while (checkShift())
 		{
 			if (typ.depth == 0)
@@ -172,7 +236,7 @@ bool LexemChecker::checkType() // <тип>
 	type_stack.push(TYPE(typ, array_depth));
 	return 1;
 }
-bool LexemChecker::checkShift() // <сдвиг> 
+bool LexemChecker::checkShift(bool after_type) // <сдвиг> если after_type = 1, то полиз обрабатывает создание массива 
 {
 	if (isEnd()) return 0;
 	int r = p;
@@ -183,6 +247,8 @@ bool LexemChecker::checkShift() // <сдвиг>
 			popType();
 			if (match(7, L"]"))
 			{
+				if (!after_type)
+					polis_.push_back({ LEX_OPERATION, L"->" });
 				return 1;
 			}
 		}
@@ -276,18 +342,8 @@ bool LexemChecker::checkExpression() // <выражение>
 			if (!type1.is_adress)
 				runException(L"Left value required as left operand of assignment");
 			type2.is_adress = 0;
-			if (type1.depth > 0 || type2.depth > 0)
-			{
-				if (type1 == type2)
-				{
-					type_stack.push(type1);
-					continue;
-				}
-				runException(L"Incompatible types in expression");
-			}
-			if (type1 != STRING_TYPE && type1 != BOOL_TYPE && type2 == STRING_TYPE)
-				runException(L"Incompatible types in expression");
-			type_stack.push(BOOL_TYPE);
+			tryCast(type1, type2);
+			polis_.push_back(popSign());
 		}
 		return 1;
 	}
@@ -308,6 +364,7 @@ bool LexemChecker::checkExp2() // <выр 2>
 			if (type1.depth > 0 || type2.depth > 0)
 				runException(L"Incompatible types in expression");
 			type_stack.push(BOOL_TYPE);
+			polis_.push_back(popSign());
 		}
 		return 1;
 	}
@@ -328,6 +385,7 @@ bool LexemChecker::checkExp3() // <выр 3>
 			if (type1.depth > 0 || type2.depth > 0)
 				runException(L"Incompatible types in expression");
 			type_stack.push(BOOL_TYPE);
+			polis_.push_back(popSign());
 		}
 		return 1;
 	}
@@ -355,6 +413,7 @@ bool LexemChecker::checkExp4() // <выр 4>
 			if (type1 == INT_TYPE || type2 == INT_TYPE)
 				exp_type = INT_TYPE;
 			type_stack.push(exp_type);
+			polis_.push_back(popSign());
 		}
 		return 1;
 	}
@@ -382,6 +441,7 @@ bool LexemChecker::checkExp5() // <выр 5>
 			if (type1 == INT_TYPE || type2 == INT_TYPE)
 				exp_type = INT_TYPE;
 			type_stack.push(exp_type);
+			polis_.push_back(popSign());
 		}
 		return 1;
 	}
@@ -409,6 +469,7 @@ bool LexemChecker::checkExp6() // <выр 6>
 			if (type1 == INT_TYPE || type2 == INT_TYPE)
 				exp_type = INT_TYPE;
 			type_stack.push(exp_type);
+			polis_.push_back(popSign());
 		}
 		return 1;
 	}
@@ -431,6 +492,7 @@ bool LexemChecker::checkExp7() // <выр 7>
 			if ((type1 == STRING_TYPE) != (type2 == STRING_TYPE))
 				runException(L"Incompatible types in expression");
 			type_stack.push(BOOL_TYPE);
+			polis_.push_back(popSign());
 		}
 		return 1;
 	}
@@ -453,6 +515,7 @@ bool LexemChecker::checkExp8() // <выр 8>
 			if ((type1 == STRING_TYPE) != (type2 == STRING_TYPE))
 				runException(L"Incompatible types in expression");
 			type_stack.push(BOOL_TYPE);
+			polis_.push_back(popSign());
 		}
 		return 1;
 	}
@@ -479,6 +542,7 @@ bool LexemChecker::checkExp9() // <выр 9>
 			if (type1.depth > 0 || type2.depth > 0)
 				runException(L"Incompatible types in expression");
 			type_stack.push(INT_TYPE);
+			polis_.push_back(popSign());
 		}
 		return 1;
 	}
@@ -504,6 +568,7 @@ bool LexemChecker::checkExp10() // <выр 10>
 			if (type1 == FLOAT_TYPE || type2 == FLOAT_TYPE)
 				exp_type = FLOAT_TYPE;
 			type_stack.push(exp_type);
+			polis_.push_back(popSign());
 		}
 		return 1;
 	}
@@ -529,6 +594,7 @@ bool LexemChecker::checkExp11() // <выр 11>
 			if (type1 == FLOAT_TYPE || type2 == FLOAT_TYPE)
 				exp_type = FLOAT_TYPE;
 			type_stack.push(exp_type);
+			polis_.push_back(popSign());
 		}
 		return 1;
 	}
@@ -536,9 +602,11 @@ bool LexemChecker::checkExp11() // <выр 11>
 }
 bool LexemChecker::checkExp12() // <выр 12> 
 {
-	bool sgn = 0;
+	int sgn = 0;
 	while (checkSign12())
-		sgn = 1;
+	{
+		++sgn;
+	}
 	bool exp = checkExp13();
 	if (sgn && exp)
 	{
@@ -549,6 +617,10 @@ bool LexemChecker::checkExp12() // <выр 12>
 		if (type == INT_TYPE || type == FLOAT_TYPE)
 			type_stack.push(BOOL_TYPE);
 		else runException(L"Incorrect type in expression");
+		while (sgn--)
+		{
+			polis_.push_back(popSign());
+		}
 		return 1;
 	}
 	if (sgn && !exp)
@@ -557,10 +629,10 @@ bool LexemChecker::checkExp12() // <выр 12>
 }
 bool LexemChecker::checkExp13() // <выр 13> 
 {
-	bool sgn = 0;
+	int sgn = 0;
 	while (checkSign13())
 	{
-		sgn = 1;
+		++sgn;
 	}
 	bool exp = checkExp14();
 	if (sgn && exp)
@@ -570,6 +642,10 @@ bool LexemChecker::checkExp13() // <выр 13>
 		{
 			type.is_adress = 0;
 			type_stack.push(type);
+			while (sgn--)
+			{
+				polis_.push_back(popSign());
+			}
 			return 1;
 		}
 		else runException(L"Incorrect type in expression");
@@ -580,10 +656,10 @@ bool LexemChecker::checkExp13() // <выр 13>
 }
 bool LexemChecker::checkExp14() // <выр 14> 
 {
-	bool sgn = 0;
+	int sgn = 0;
 	while (checkSign14())
 	{
-		sgn = 1;
+		++sgn;
 	}
 	bool exp = checkExp15();
 	if (sgn && exp)
@@ -593,6 +669,10 @@ bool LexemChecker::checkExp14() // <выр 14>
 		{
 			type.is_adress = 0;
 			type_stack.push(type);
+			while (sgn--)
+			{
+				polis_.push_back(popSign());
+			}
 			return 1;
 		}
 		else runException(L"Incorrect type in expression");
@@ -603,10 +683,10 @@ bool LexemChecker::checkExp14() // <выр 14>
 }
 bool LexemChecker::checkExp15() // <выр 15> 
 {
-	bool sgn = 0;
+	int sgn = 0;
 	while (checkSign15())
 	{
-		sgn = 1;
+		++sgn;
 	}
 	bool exp = checkExp16();
 	if (sgn && exp)
@@ -614,6 +694,12 @@ bool LexemChecker::checkExp15() // <выр 15>
 		TYPE type = popType(0);
 		if (!type.is_adress)
 			runException(L"This isn't a variable");
+		while (sgn--)
+		{
+			lexem sign = popSign();
+			sign.second += L'a';
+			polis_.push_back(sign);
+		}
 		if (type == INT_TYPE)
 			return 1;
 		if (type == BOOL_TYPE)
@@ -630,10 +716,22 @@ bool LexemChecker::checkExp16() // <выр 16>
 {
 	if (checkValue())
 	{
+		TYPE type = popType(0);
+		if (type == VOID_TYPE || type == ADRESS_TYPE)
+			runException(L"Type '" + type.to_str() + L"' is prohibited in expression");
 		if (checkSign16())
 		{
-			while (checkSign16());
-			TYPE type = popType(0);
+			int sgn = 1;
+			while (checkSign16())
+			{
+				++sgn;
+			}
+			while (sgn--)
+			{
+				lexem sign = popSign();
+				sign.second = L'a' + sign.second;
+				polis_.push_back(sign);
+			}
 			if (!type.is_adress)
 				runException(L"This isn't a variable");
 			if (type == INT_TYPE)
@@ -656,23 +754,26 @@ bool LexemChecker::checkConstant() // <константа>
 {
 	return checkNumber() || checkString() || checkLogic();
 }
-bool LexemChecker::checkFuctionCall() // <результат функции> 
+int LexemChecker::checkFuctionCall() // <результат функции> 
 {
+	int arg_count = 0;
 	if (match(7, L"("))
 	{
 		if (checkExpression())
 		{
-			popType();
+			++arg_count;
 			while (match(7, L","))
 			{
 				if (!checkExpression())
 					runException(L"Expected argument");
-				popType();
+				++arg_count;
 			}
 		}
 		if (!match(7, L")"))
 			runException(L"Invalid argument");
-		return 1;
+		if (arg_count == 0)
+			arg_count = -1;
+		return arg_count;
 	}
 	return 0;
 }
@@ -732,12 +833,14 @@ bool LexemChecker::checkStreamOperator() // <оператор потока>
 	{
 		if (!checkVariable())
 			runException(L"Expected variable");
+		polis_.push_back({ LEX_OPERATION, L"in" });
 		return 1;
 	}
 	if (match(1, L"out"))
 	{
 		if (!checkExpression())
 			runException(L"Expected expression");
+		polis_.push_back({ LEX_OPERATION, L"out" });
 		popType();
 		return 1;
 	}
@@ -758,6 +861,9 @@ bool LexemChecker::checkIf() // <оператор if>
 		popType();
 		if (!match(7, L")"))
 			runException(L"Expected ending bracket");
+		int code_line1 = polis_.size();
+		polis_.push_back({ LEX_INT, L"@" });
+		polis_.push_back({ LEX_OPERATION, L"?!" });
 		if (!(checkBlock() || checkFreeOperator()))
 		{
 			pushBlock();
@@ -767,14 +873,24 @@ bool LexemChecker::checkIf() // <оператор if>
 		}
 		if (match(1, L"else"))
 		{
+			int code_line2 = polis_.size();
+			polis_.push_back({ LEX_INT, L"@" });
+			polis_.push_back({ LEX_OPERATION, L"!" });
+			polis_[code_line1].second = std::to_wstring(polis_.size());
+
 			if (checkBlock() || checkFreeOperator())
+			{
+				polis_[code_line2].second = std::to_wstring(polis_.size());
 				return 1;
+			}
 			pushBlock();
 			if (!(checkOperator() && match(7, L";")))
 				runException(L"Expected operator");
 			popBlock();
+			polis_[code_line2].second = std::to_wstring(polis_.size());
 			return 1;
 		}
+		polis_[code_line1].second = std::to_wstring(polis_.size());
 		return 1;
 	}
 	return 0;
@@ -783,6 +899,9 @@ bool LexemChecker::checkWhile() // <оператор while>
 {
 	if (match(1, L"while"))
 	{
+		int break_depth = break_stack.size(), continue_depth = continue_stack.size();
+		int code_line1 = polis_.size();
+
 		if (!match(7, L"("))
 			runException(L"Expected arguments in brackets");
 		if (!checkExpression())
@@ -790,12 +909,32 @@ bool LexemChecker::checkWhile() // <оператор while>
 		popType();
 		if (!match(7, L")"))
 			runException(L"Expected ending bracket");
-		if (checkBlock() || checkFreeOperator())
-			return 1;
-		pushBlock();
-		if (!(checkOperator() && match(7, L";")))
-			runException(L"Expected operator");
-		popBlock();
+
+		int code_line2 = polis_.size();
+		polis_.push_back({ LEX_INT, L"@" });
+		polis_.push_back({ LEX_OPERATION, L"?!" });
+
+		if (!(checkBlock() || checkFreeOperator()))
+		{
+			pushBlock();
+			if (!(checkOperator() && match(7, L";")))
+				runException(L"Expected operator");
+			popBlock();
+		}
+		polis_.push_back({ LEX_INT, std::to_wstring(code_line1) });
+		polis_.push_back({ LEX_OPERATION, L"!" });
+		polis_[code_line2].second = std::to_wstring(polis_.size());
+
+		while (break_stack.size() > break_depth)
+		{
+			polis_[break_stack.top()].second = std::to_wstring(polis_.size());
+			break_stack.pop();
+		}
+		while (continue_stack.size() > break_depth)
+		{
+			polis_[continue_stack.top()].second = std::to_wstring(code_line1);
+			continue_stack.pop();
+		}
 		return 1;
 	}
 	return 0;
@@ -804,57 +943,107 @@ bool LexemChecker::checkFor() // <оператор for>
 {
 	if (match(1, L"for"))
 	{
+		int break_depth = break_stack.size(), continue_depth = continue_stack.size();
 		pushBlock();
 		if (!match(7, L"("))
 			runException(L"Expected arguments in brackets");
 		checkForOperator();
 		if (!match(7, L";"))
 			runException(L"Expected ';'");
+		int code_line1 = polis_.size();
+		polis_.push_back({ LEX_INT, L"@" });
+		polis_.push_back({ LEX_OPERATION, L"!" });
+
 		checkForOperator();
 		if (!match(7, L";"))
 			runException(L"Expected ';'");
+		int code_line2 = polis_.size();
+		polis_.push_back({ LEX_INT, L"@" });
+		polis_.push_back({ LEX_OPERATION, L"?!" });
+		polis_.push_back({ LEX_INT, L"@" });
+		polis_.push_back({ LEX_OPERATION, L"!" });
+
 		checkForOperator();
+		polis_.push_back({ LEX_INT, std::to_wstring(code_line1+2) });
+		polis_.push_back({ LEX_OPERATION, L"!" });
+
 		if (!match(7, L")"))
 			runException(L"Expected ending bracket");
-		if (checkBlock() || checkFreeOperator())
-		{
-			popBlock();
-			return 1;
-		}
-		pushBlock();
-		if (!(checkOperator() && match(7, L";")))
-			runException(L"LExpected operator");
-		popBlock();
-		popBlock();
-		return 1;
 
+		polis_[code_line1].second = std::to_wstring(polis_.size());
+		polis_[code_line2+2].second = std::to_wstring(polis_.size());
+
+		if (!(checkBlock() || checkFreeOperator()))
+		{
+			pushBlock();
+			if (!(checkOperator() && match(7, L";")))
+				runException(L"LExpected operator");
+			popBlock();
+		}
+		popBlock();
+		polis_.push_back({ LEX_INT, std::to_wstring(code_line2 + 4) });
+		polis_.push_back({ LEX_OPERATION, L"!" });
+		polis_[code_line2].second = std::to_wstring(polis_.size());
+
+		while (break_stack.size() > break_depth)
+		{
+			polis_[break_stack.top()].second = std::to_wstring(polis_.size());
+			break_stack.pop();
+		}
+		while (continue_stack.size() > break_depth)
+		{
+			polis_[continue_stack.top()].second = std::to_wstring(code_line2+4);
+			continue_stack.pop();
+		}
+		return 1;
 	}
 	return 0;
 }
 bool LexemChecker::checkGoto() // <оператор перехода> 
 {
-	if (match(1, L"break")) return 1;
-	if (match(1, L"continue")) return 1;
+	if (match(1, L"break"))
+	{
+		break_stack.push(polis_.size());
+		polis_.push_back({ LEX_INT, L"@" });
+		polis_.push_back({ LEX_OPERATION, L"!" });
+		return 1;
+	}
+	if (match(1, L"continue"))
+	{
+		continue_stack.push(polis_.size());
+		polis_.push_back({ LEX_INT, L"@" });
+		polis_.push_back({ LEX_OPERATION, L"!" });
+		return 1;
+	}
 	if (match(1, L"return"))
 	{
 		if (!checkExpression())
 			runException(L"Expected expression");
-		popType();
+		TYPE return_type = tid_tree_->get_return_type();
+		if (return_type == NO_TYPE)
+			runException(L"This block cannot have return operator");
+		tryCast(return_type, popType());
+		polis_.push_back({ LEX_OPERATION, L"ret" });
 		return 1;
 	}
 	if (match(1, L"goto"))
 	{
 		if (!checkName())
 			runException(L"Expected identifier");
-		if (!checkKnown(popName(0)))
-			runException(L"Unknown label '" + popName(0) + L"'");
-		else popName();
+		goto_stack.push({ polis_.size(), popName() });
+		polis_.push_back({ LEX_INT, L"@" });
+		polis_.push_back({ LEX_OPERATION, L"!" });
 		return 1;
 	}
 	if (match(1, L"label"))
 	{
 		if (!checkName())
 			runException(L"Expected identifier");
+		if (checkKnown(popName(0)))
+			runException(L"Identifier '" + popName(0) + L"' is already used");
+		if (label_map.find(popName(0)) != label_map.end())
+			runException(L"Label '" + popName(0) + L"' is already used");
+		label_map[popName(0)] = polis_.size();
 		pushId(popName(), { TYPES::ADRESS_, 0 });
 		return 1;
 	}
@@ -869,36 +1058,58 @@ bool LexemChecker::checkDescription() // <описание>
 		int var_type = 0;
 		std::wstring nam = popName(0);
 		bool is_temp = tid_tree_->is_template(nam, popType(0));
+		if (tid_tree_->is_function(nam))
+		{
+			if (!tid_tree_->is_current(nam))
+				runException(L"Function can be descripted only in the same block");
+			if (!is_temp)
+				runException(L"Fuction is already descripted");
+		}
+		TYPE typ = popType();
+		if (typ.depth > 0)
+			polis_.push_back({ LEX_OPERATION, L"set-array" });
 		if (!is_temp)
 		{
-			pushId(popName(), popType(0));
+			pushId(popName(), typ);
 			if (match(6, L"="))
 			{
+				polis_.push_back(tid_tree_->get_adress(nam));
 				if (!checkExpression())
 					runException(L"Expected expression");
-				popType();
+				TYPE exp_type = popType();
+				if (tryCast(typ, exp_type))
+					popType();
+				polis_.push_back({ LEX_OPERATION, L"=" });
 				var_type = 1;
 			}
 			while (match(7, L","))
 			{
 				if (!checkName())
 					runException(L"Expected identifier");
-				pushId(popName(), popType(0));
+				std::wstring nam2 = popName(0);
+				pushId(popName(), typ);
 				if (match(6, L"="))
 				{
+					polis_.push_back(tid_tree_->get_adress(nam2));
 					if (!checkExpression())
 						runException(L"Expected expression");
-					popType();
+					TYPE exp_type = popType();
+					if (tryCast(typ, exp_type))
+						popType();
+					polis_.push_back({ LEX_OPERATION, L"=" });
 				}
 				var_type = 1;
 			}
-			popType();
 		}
 		if (!var_type && match(7, L"("))
 		{
+			int code_line1 = polis_.size();
+			polis_.push_back({ LEX_INT, L"@" });
+			polis_.push_back({ LEX_OPERATION, L"!" });
 			TID* last_tid = tid_tree_;
 			pushBlock();
-			bool has_args = 0, temp_step = 0;
+			tid_tree_->set_return_type(typ);
+			bool has_args = 0;
 			std::vector<TYPE>* args = tid_tree_->get_arguments(nam);
 			if (args == nullptr)
 				runException(L"We've found a bug in checkDescription");
@@ -906,7 +1117,14 @@ bool LexemChecker::checkDescription() // <описание>
 			{
 				has_args = 1;
 				TYPE first_type = popType();
-				args->push_back(first_type);
+				if (is_temp)
+				{
+					if (args->size() == 0)
+						runException(L"Too many arguments in description");
+					if (*(args->begin()) != first_type)
+						runException(L"Argument 1 has wrong type");
+				}
+				else args->push_back(first_type);
 				while (match(7, L","))
 				{
 					var_type = 2;
@@ -919,7 +1137,7 @@ bool LexemChecker::checkDescription() // <описание>
 				if (!var_type && checkName())
 				{
 					var_type = 3;
-					last_tid->push_code(nam);
+					last_tid->push_code(nam, polis_.size());
 					std::vector<std::wstring> new_names;
 
 					if (checkKnown(popName(0)))
@@ -927,18 +1145,20 @@ bool LexemChecker::checkDescription() // <описание>
 					new_names.push_back(popName(0));
 					pushId(popName(), first_type);
 
+					int temp_step = 1;
 					while (match(7, L","))
 					{
 						if (!checkType())
 							runException(L"Expected type");
-						if (!is_temp)
+						if (is_temp)
 						{
 							if (temp_step >= args->size())
-								runException(L"Too few arguments in description");
+								runException(L"Too many arguments in description");
 							if (*(args->begin() + temp_step) != popType(0))
 								runException(L"Argument " + std::to_wstring(temp_step + 1) + L" has wrong type");
 						}
 						else args->push_back(popType(0));
+						++temp_step;
 						if (!checkName())
 							runException(L"Expected identifier");
 						if (std::find(new_names.begin(), new_names.end(), popName(0)) != new_names.end())
@@ -948,11 +1168,21 @@ bool LexemChecker::checkDescription() // <описание>
 						new_names.push_back(popName(0));
 						pushId(popName(), popType());
 					}
+					if (is_temp && temp_step < args->size())
+						runException(L"Too few arguments in description");
 					if (!match(7, L")"))
 						runException(L"Expected ending bracket");
 					if (!checkBlock())
 						runException(L"Expected description");
+					polis_.push_back({ LEX_UNKNOWN, L"" });
+					polis_.push_back({ LEX_OPERATION, L"ret" });
+					while (!new_names.empty())
+					{
+						polis_.push_back(tid_tree_->get_adress(new_names.back()));
+						polis_.push_back({ LEX_OPERATION, L"arg=" });
+					}
 					popBlock();
+					polis_[code_line1].second = std::to_wstring(polis_.size());
 					return 1;
 				}
 			}
@@ -960,11 +1190,16 @@ bool LexemChecker::checkDescription() // <описание>
 				runException(L"Expected ending bracket");
 			if (!var_type && !has_args)
 			{
-				if (!checkBlock())
+				int code_line2 = polis_.size();
+				if (checkBlock())
+					last_tid->push_code(nam, code_line2);
+				else if (is_temp)
 					runException(L"Expected description");
-				last_tid->push_code(nam);
 			}
 			popBlock();
+			pushFunctionDefault(typ);
+			polis_.push_back({ LEX_OPERATION, L"ret" });
+			polis_[code_line1].second = std::to_wstring(polis_.size());
 		}
 		return 1;
 	}
@@ -1001,6 +1236,29 @@ bool LexemChecker::checkKnown(std::wstring name)
 	return tid_tree_->get_type(name) != NO_TYPE;
 }
 
+bool LexemChecker::tryCast(TYPE to_type, TYPE from_type)
+{
+	if (to_type.depth > 0 || from_type.depth > 0)
+	{
+		if (to_type == from_type)
+		{
+			type_stack.push(to_type);
+			return 1;
+		}
+		std::wstring excep_text = L"Cannot convert type '" + from_type.to_str();
+		excep_text += L"' to '" + to_type.to_str() + L"'";
+		runException(excep_text);
+	}
+	if (to_type != STRING_TYPE && to_type != BOOL_TYPE && from_type == STRING_TYPE)
+	{
+		std::wstring excep_text = L"Cannot convert type '" + from_type.to_str();
+		excep_text += L"' to '" + to_type.to_str() + L"'";
+		runException(excep_text);
+	}
+	type_stack.push(to_type);
+	return 1;
+}
+
 bool LexemChecker::match(int type, std::wstring word)
 {
 
@@ -1011,6 +1269,8 @@ bool LexemChecker::match(int type, std::wstring word)
 		return 0;
 	if (term_[p].second != word)
 		return 0;
+	if (type == 6)
+		sign_stack.push(term_[p]);
 	++p;
 	return 1;
 }
@@ -1070,8 +1330,17 @@ TYPE LexemChecker::popType(bool pop)
 	return res;
 }
 
+lexem LexemChecker::popSign(bool pop)
+{
+	if (sign_stack.empty())
+		runException(L"We've found a bug in popSign");
+	auto res = sign_stack.top();
+	if (pop) sign_stack.pop();
+	return res;
+}
+
 void LexemChecker::runException(std::wstring reason)
 {
-	std::wcout << L"Syntax Error: " << reason << '\n';
+	std::wcout << L"Syntax Error: " << reason << ". Lexem: " << p << '\n';
 	exit(0);
 }

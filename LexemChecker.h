@@ -3,8 +3,6 @@
 #include <stack>
 #include "TID.h"
 
-typedef std::pair<int, std::wstring> lexem;
-
 class LexemChecker
 {
 public:
@@ -12,6 +10,8 @@ public:
 	~LexemChecker();
 
 	bool checkProgram(); // <программа>
+	TID* get_tree();
+	std::vector<lexem>& get_polis();
 
 private:
 
@@ -28,7 +28,7 @@ private:
 	bool checkName(); // <имя>
 	bool checkNames(); // <имена>
 	bool checkType(); // <тип>
-	bool checkShift(); // <сдвиг>
+	bool checkShift(bool after_type = 0); // <сдвиг> если after_type = 1, то полиз обрабатывает создание массива 
 
 	bool checkSign1(); // <знак 1>
 	bool checkSign2(); // <знак 2>
@@ -65,7 +65,7 @@ private:
 	bool checkExp16(); // <выр 16>
 	bool checkVariable(); // <переменная>
 	bool checkConstant(); // <константа>
-	bool checkFuctionCall(); // <результат функции>
+	int checkFuctionCall(); // <результат функции>
 	bool checkValue(); // <значение>
 	bool checkOperator(); // <оператор>
 	bool checkOperators(); // <операторы>
@@ -85,6 +85,7 @@ private:
 	// Семантический анализ
 
 	bool checkKnown(std::wstring name); // известен ли идентификатор?
+	bool tryCast(TYPE type1, TYPE type2);
 
 	// Вспомогательные функции
 
@@ -98,15 +99,43 @@ private:
 	void popBlock();
 	void pushId(std::wstring name, TYPE type);
 
+	void pushFunctionDefault(TYPE type)
+	{
+		lexem value = { LEX_UNKNOWN, L"" };
+		if (type.basic == TYPES::INT_ && type.depth == 0)
+			value = { LEX_INT, L"0" };
+		if (type.basic == TYPES::BOOL_ && type.depth == 0)
+			value = { LEX_BOOL, L"0" };
+		if (type.basic == TYPES::FLOAT_ && type.depth == 0)
+			value = { LEX_FLOAT, L"0" };
+		if (type.basic == TYPES::STRING_ && type.depth == 0)
+			value = { LEX_STRING, L"0" };
+		if (type.basic == TYPES::INT_ && type.depth == 1)
+			value = { LEX_ARRAY | LEX_INT, L"0" };
+		if (type.basic == TYPES::BOOL_ && type.depth == 1) 
+			value = { LEX_ARRAY | LEX_BOOL, L"0" };
+		if (type.basic == TYPES::FLOAT_ && type.depth == 1) 
+			value = { LEX_ARRAY | LEX_FLOAT, L"0" };
+		if (type.basic == TYPES::STRING_ && type.depth == 1) 
+			value = { LEX_ARRAY | LEX_STRING, L"0" };
+		polis_.push_back(value);
+	}
+
 	std::wstring popName(bool pop = 1);
 	TYPE popType(bool pop = 1);
+	lexem popSign(bool pop = 1);
 
 	void runException(std::wstring reason);
 
-	std::vector<lexem> term_;
+	std::vector<lexem> term_, polis_;
 	TID* tid_tree_;
 	std::stack<TYPE> type_stack;
 	std::stack<std::wstring> name_stack;
+	std::stack<lexem> sign_stack;
+
+	std::map<std::wstring, int> label_map;
+	std::stack<std::pair<int, std::wstring> > goto_stack;
+	std::stack<int> break_stack, continue_stack;
 	int p = 0;
 };
 

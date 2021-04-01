@@ -19,6 +19,67 @@ std::locale rusLoc = std::locale("Russian");
 std::map<std::wstring, std::wstring> serviceDict;
 std::wstring regexServiceCode;
 
+std::vector<int> int_values;
+std::vector<bool> bool_values;
+std::vector<float> float_values;
+std::vector<std::wstring> string_values;
+
+std::vector<int *> int_values_arr;
+std::vector<bool *> bool_values_arr;
+std::vector<float *> float_values_arr;
+std::vector<std::wstring *> string_values_arr;
+
+std::vector<std::vector<int> > int_sizes, bool_sizes, float_sizes, string_sizes;
+
+int push_value(TYPE type)
+{
+	if (type.basic == TYPES::INT_ && type.depth == 0) {
+		int_values.push_back(0); return int_values.size() - 1;
+	}
+	if (type.basic == TYPES::BOOL_ && type.depth == 0) {
+		bool_values.push_back(0); return bool_values.size() - 1;
+	}
+	if (type.basic == TYPES::FLOAT_ && type.depth == 0) {
+		float_values.push_back(0); return float_values.size() - 1;
+	}
+	if (type.basic == TYPES::STRING_ && type.depth == 0) {
+		string_values.push_back(L""); return string_values.size() - 1;
+	}
+	if (type.basic == TYPES::INT_ && type.depth == 1) {
+		int_values_arr.push_back({}); return int_values_arr.size() - 1;
+	}
+	if (type.basic == TYPES::BOOL_ && type.depth == 1) {
+		bool_values_arr.push_back({}); return bool_values_arr.size() - 1;
+	}
+	if (type.basic == TYPES::FLOAT_ && type.depth == 1) {
+		float_values_arr.push_back({}); return float_values_arr.size() - 1;
+	}
+	if (type.basic == TYPES::STRING_ && type.depth == 1) {
+		string_values_arr.push_back({}); return string_values_arr.size() - 1;
+	}
+	return -1;
+}
+
+void set_values_function(TID* tree)
+{
+	tree->push_value = push_value;
+
+	int_values.push_back(0);
+	bool_values.push_back(0);
+	float_values.push_back(0);
+	string_values.push_back(L"");
+	int_values_arr.push_back({});
+	bool_values_arr.push_back({});
+	float_values_arr.push_back({});
+	string_values_arr.push_back({});
+	int_sizes.push_back({ 0 });
+	bool_sizes.push_back({ 0 });
+	float_sizes.push_back({ 0 });
+	string_sizes.push_back({ 0 });
+}
+
+
+
 void setLocale(std::wistream &str)
 {
 	str.imbue(std::locale(str.getloc(), new std::codecvt_utf8<wchar_t>));
@@ -288,6 +349,29 @@ int main()
 			lexems[i].second = serviceDict[lexems[i].second];
 	}
 	LexemChecker mainChecker = LexemChecker(lexems);
+	set_values_function(mainChecker.get_tree());
 	mainChecker.checkProgram();
+	std::vector<lexem> &polis = mainChecker.get_polis();
 	std::cout << "Syntax: OK \n";
+	std::cout << "Generated " << polis.size() << " polis commands: \n";
+	for (int i = 0; i < polis.size(); ++i)
+	{
+		std::wstring typis = L"";
+		int type = polis[i].first;
+		if (type & LEX_ADRESS)
+			typis = L"LEX_ADRESS | ", type -= LEX_ADRESS;
+		if (type & LEX_ARRAY)
+			typis = L"LEX_ARRAY | ", type -= LEX_ARRAY;
+		if (type == LEX_INT)
+			typis += L"INT";
+		if (type == LEX_BOOL)
+			typis += L"BOOL";
+		if (type == LEX_FLOAT)
+			typis += L"FLOAT";
+		if (type == LEX_STRING)
+			typis += L"STRING";
+		if (type == LEX_OPERATION)
+			typis += L"OPERATION";
+		std::wcout << i << ". {" << typis << ", \"" << polis[i].second << "\"}\n";
+	}
 }
