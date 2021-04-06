@@ -12,7 +12,7 @@ enum TYPES
 	BOOL_ = 2,
 	FLOAT_ = 3,
 	STRING_ = 4,
-	ADRESS_ = 5,
+	CHAR_ = 5,
 	VOID_ = 6
 };
 
@@ -23,6 +23,7 @@ enum LEX
 	LEX_BOOL = 2,
 	LEX_FLOAT = 3,
 	LEX_STRING = 4,
+	LEX_CHAR = 5,
 	LEX_OPERATION = 6,
 	LEX_PUNCTUATION = 7,
 	LEX_ADRESS = 8,
@@ -43,7 +44,7 @@ struct TYPE {
 	{
 		basic = type.basic;
 		depth = type.depth;
-		is_adress = is_adress;
+		is_adress = type.is_adress;
 	}
 	bool operator == (const TYPE type)
 	{
@@ -66,8 +67,6 @@ struct TYPE {
 			res = L"string";
 		else if (basic == TYPES::VOID_)
 			res = L"void";
-		else if (basic == TYPES::ADRESS_)
-			res = L"label";
 		else res = L"unknown";
 		res += std::wstring(depth, '*');
 		return res;
@@ -78,8 +77,8 @@ struct TYPE {
 #define FLOAT_TYPE TYPE(TYPES::FLOAT_, 0, 0)
 #define BOOL_TYPE TYPE(TYPES::BOOL_, 0, 0)
 #define STRING_TYPE TYPE(TYPES::STRING_, 0, 0)
-#define ADRESS_TYPE TYPE(TYPES::ADRESS_, 0, 0)
 #define VOID_TYPE TYPE(TYPES::VOID_, 0, 0)
+#define CHAR_TYPE TYPE(TYPES::CHAR_, 0, 0)
 // TYPE {ID, ARRAY_DEPTH} 
 // ID: 0 - UNKNOWN, 1 - INT, 2 - BOOL, 3 - FLOAT, 4 - STRING, [5, +INF) - CUSTOM
 
@@ -91,6 +90,7 @@ public:
 	~TID();
 
 	void set_return_type(TYPE type);
+	void set_is_adress(std::wstring& name, bool value);
 	bool push_id(std::wstring& name, TYPE type);
 	bool is_template(std::wstring& name, TYPE type);
 	bool is_function(std::wstring& name);

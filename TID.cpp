@@ -61,6 +61,12 @@ void TID::set_return_type(TYPE type)
 {
 	return_type_ = type;
 }
+void TID::set_is_adress(std::wstring& name, bool value)
+{
+	if (types_.find(name) == types_.end())
+		return;
+	types_[name].is_adress = value;
+}
 
 bool TID::push_id(std::wstring & name, TYPE type)
 {

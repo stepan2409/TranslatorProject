@@ -36,6 +36,9 @@ int push_value(TYPE type)
 	if (type.basic == TYPES::INT_ && type.depth == 0) {
 		int_values.push_back(0); return int_values.size() - 1;
 	}
+	if (type.basic == TYPES::CHAR_ && type.depth == 0) {
+		int_values.push_back(0); return int_values.size() - 1;
+	}
 	if (type.basic == TYPES::BOOL_ && type.depth == 0) {
 		bool_values.push_back(0); return bool_values.size() - 1;
 	}
@@ -46,6 +49,9 @@ int push_value(TYPE type)
 		string_values.push_back(L""); return string_values.size() - 1;
 	}
 	if (type.basic == TYPES::INT_ && type.depth == 1) {
+		int_values_arr.push_back({}); return int_values_arr.size() - 1;
+	}
+	if (type.basic == TYPES::CHAR_ && type.depth == 1) {
 		int_values_arr.push_back({}); return int_values_arr.size() - 1;
 	}
 	if (type.basic == TYPES::BOOL_ && type.depth == 1) {
@@ -370,6 +376,8 @@ int main()
 			typis += L"FLOAT";
 		if (type == LEX_STRING)
 			typis += L"STRING";
+		if (type == LEX_CHAR)
+			typis += L"CHAR";
 		if (type == LEX_OPERATION)
 			typis += L"OPERATION";
 		std::wcout << i << ". {" << typis << ", \"" << polis[i].second << "\"}\n";

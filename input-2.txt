@@ -1,0 +1,8 @@
+﻿int i = 0;
+bool b;
+float f;
+string s = "Yippee-ki-yay";
+char c = 'яплакалъ';
+out c + i;
+out;
+out;

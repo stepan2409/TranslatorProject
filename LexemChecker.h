@@ -23,6 +23,7 @@ private:
 	bool checkInteger(); // <целое>
 	bool checkFloat(); // <десятичное>
 	bool checkString(); // <строка>
+	bool checkChar(); // <символ>
 	bool checkLogic(); // <строка>
 	bool checkPointer(); // <указатель>
 	bool checkName(); // <имя>
@@ -65,7 +66,7 @@ private:
 	bool checkExp16(); // <выр 16>
 	bool checkVariable(); // <переменная>
 	bool checkConstant(); // <константа>
-	int checkFuctionCall(); // <результат функции>
+	 int checkFuctionCall(); // <результат функции>
 	bool checkValue(); // <значение>
 	bool checkOperator(); // <оператор>
 	bool checkOperators(); // <операторы>
@@ -110,15 +111,16 @@ private:
 			value = { LEX_FLOAT, L"0" };
 		if (type.basic == TYPES::STRING_ && type.depth == 0)
 			value = { LEX_STRING, L"0" };
-		if (type.basic == TYPES::INT_ && type.depth == 1)
+		if (type.basic == TYPES::INT_ && type.depth >= 1)
 			value = { LEX_ARRAY | LEX_INT, L"0" };
-		if (type.basic == TYPES::BOOL_ && type.depth == 1) 
+		if (type.basic == TYPES::BOOL_ && type.depth >= 1)
 			value = { LEX_ARRAY | LEX_BOOL, L"0" };
-		if (type.basic == TYPES::FLOAT_ && type.depth == 1) 
+		if (type.basic == TYPES::FLOAT_ && type.depth >= 1)
 			value = { LEX_ARRAY | LEX_FLOAT, L"0" };
-		if (type.basic == TYPES::STRING_ && type.depth == 1) 
+		if (type.basic == TYPES::STRING_ && type.depth >= 1)
 			value = { LEX_ARRAY | LEX_STRING, L"0" };
-		polis_.push_back(value);
+		if(type.basic != TYPES::VOID_)
+			polis_.push_back(value);
 	}
 
 	std::wstring popName(bool pop = 1);

@@ -3,6 +3,8 @@ int кек
 bool лол
 string письмо
 float дробкек
+char буква
+void ничо
 in сюды
 out туды
 if кабы
@@ -16,4 +18,3 @@ goto читкод
 label верста
 true ага
 false неа
-struct корпускула

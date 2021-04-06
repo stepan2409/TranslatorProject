@@ -1,4 +1,6 @@
-float c;
-
-int a = 12, b = c + 3 * 2;
-in a;
+void function(int a)
+{
+	int b = int(in);
+	string s = string(2 - b) + string(3 / (17 >> 2 + 3));
+	out s[0];
+};
