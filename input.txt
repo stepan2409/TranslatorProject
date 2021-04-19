@@ -1,6 +1,1 @@
-void function(int a)
-{
-	int b = int(in);
-	string s = string(2 - b) + string(3 / (17 >> 2 + 3));
-	out s[0];
-};
+out char(107.9);

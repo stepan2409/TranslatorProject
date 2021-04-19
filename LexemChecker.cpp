@@ -183,7 +183,7 @@ bool LexemChecker::checkPointer() // <указатель>
 				runException(L"We have a bug in checkPointer");
 			polis_.push_back({ LEX_INT, std::to_wstring(code_line) });
 			polis_.push_back({ LEX_OPERATION, L"push-stack" });
-			polis_.push_back({ LEX_OPERATION, L"!" });
+			polis_.push_back({ LEX_OPERATION, L"!!" });
 		}
 		else
 		{
@@ -732,7 +732,9 @@ bool LexemChecker::checkExp14() // <выр 14>
 			type_stack.push(type);
 			while (sgn--)
 			{
-				polis_.push_back(popSign());
+				lexem lexemToPush = popSign ();
+				lexemToPush.second += L"!";
+				polis_.push_back(lexemToPush);
 			}
 			return 1;
 		}
@@ -962,7 +964,7 @@ bool LexemChecker::checkIf() // <оператор if>
 		{
 			int code_line2 = polis_.size();
 			polis_.push_back({ LEX_INT, L"@" });
-			polis_.push_back({ LEX_OPERATION, L"!" });
+			polis_.push_back({ LEX_OPERATION, L"!!" });
 			polis_[code_line1].second = std::to_wstring(polis_.size());
 
 			if (checkBlock() || checkFreeOperator())
@@ -1009,7 +1011,7 @@ bool LexemChecker::checkWhile() // <оператор while>
 			popBlock();
 		}
 		polis_.push_back({ LEX_INT, std::to_wstring(code_line1) });
-		polis_.push_back({ LEX_OPERATION, L"!" });
+		polis_.push_back({ LEX_OPERATION, L"!!" });
 		polis_[code_line2].second = std::to_wstring(polis_.size());
 
 		while (break_stack.size() > break_depth)
@@ -1039,7 +1041,7 @@ bool LexemChecker::checkFor() // <оператор for>
 			runException(L"Expected ';'");
 		int code_line1 = polis_.size();
 		polis_.push_back({ LEX_INT, L"@" });
-		polis_.push_back({ LEX_OPERATION, L"!" });
+		polis_.push_back({ LEX_OPERATION, L"!!" });
 
 		checkForOperator();
 		if (!match(7, L";"))
@@ -1048,11 +1050,11 @@ bool LexemChecker::checkFor() // <оператор for>
 		polis_.push_back({ LEX_INT, L"@" });
 		polis_.push_back({ LEX_OPERATION, L"?!" });
 		polis_.push_back({ LEX_INT, L"@" });
-		polis_.push_back({ LEX_OPERATION, L"!" });
+		polis_.push_back({ LEX_OPERATION, L"!!" });
 
 		checkForOperator();
 		polis_.push_back({ LEX_INT, std::to_wstring(code_line1+2) });
-		polis_.push_back({ LEX_OPERATION, L"!" });
+		polis_.push_back({ LEX_OPERATION, L"!!" });
 
 		if (!match(7, L")"))
 			runException(L"Expected ending bracket");
@@ -1069,7 +1071,7 @@ bool LexemChecker::checkFor() // <оператор for>
 		}
 		popBlock();
 		polis_.push_back({ LEX_INT, std::to_wstring(code_line2 + 4) });
-		polis_.push_back({ LEX_OPERATION, L"!" });
+		polis_.push_back({ LEX_OPERATION, L"!!" });
 		polis_[code_line2].second = std::to_wstring(polis_.size());
 
 		while (break_stack.size() > break_depth)
@@ -1092,14 +1094,14 @@ bool LexemChecker::checkGoto() // <оператор перехода>
 	{
 		break_stack.push(polis_.size());
 		polis_.push_back({ LEX_INT, L"@" });
-		polis_.push_back({ LEX_OPERATION, L"!" });
+		polis_.push_back({ LEX_OPERATION, L"!!" });
 		return 1;
 	}
 	if (match(1, L"continue"))
 	{
 		continue_stack.push(polis_.size());
 		polis_.push_back({ LEX_INT, L"@" });
-		polis_.push_back({ LEX_OPERATION, L"!" });
+		polis_.push_back({ LEX_OPERATION, L"!!" });
 		return 1;
 	}
 	if (match(1, L"return"))
@@ -1126,7 +1128,7 @@ bool LexemChecker::checkGoto() // <оператор перехода>
 			runException(L"Expected identifier");
 		goto_stack.push({ polis_.size(), popName() });
 		polis_.push_back({ LEX_INT, L"@" });
-		polis_.push_back({ LEX_OPERATION, L"!" });
+		polis_.push_back({ LEX_OPERATION, L"!!" });
 		return 1;
 	}
 	if (match(1, L"label"))
@@ -1239,7 +1241,7 @@ bool LexemChecker::checkDescription() // <описание>
 					var_type = 3;
 					int code_line1 = polis_.size();
 					polis_.push_back({ LEX_INT, L"@" });
-					polis_.push_back({ LEX_OPERATION, L"!" });
+					polis_.push_back({ LEX_OPERATION, L"!!" });
 					last_tid->push_code(nam, polis_.size());
 					std::vector<std::wstring> new_names;
 
@@ -1296,7 +1298,7 @@ bool LexemChecker::checkDescription() // <описание>
 			{
 				int code_line2 = polis_.size();
 				polis_.push_back({ LEX_INT, L"@" });
-				polis_.push_back({ LEX_OPERATION, L"!" });
+				polis_.push_back({ LEX_OPERATION, L"!!" });
 				if (checkBlock())
 				{
 					pushFunctionDefault(typ);

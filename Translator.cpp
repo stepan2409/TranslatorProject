@@ -9,6 +9,7 @@
 #include <locale>
 #include <windows.h>
 #include <map>
+#include <stack>
 #include "LexemChecker.h"
 
 
@@ -19,34 +20,41 @@ std::locale rusLoc = std::locale("Russian");
 std::map<std::wstring, std::wstring> serviceDict;
 std::wstring regexServiceCode;
 
-std::vector<int> int_values;
-std::vector<bool> bool_values;
-std::vector<float> float_values;
-std::vector<std::wstring> string_values;
+std::vector<std::stack<int>> int_values;
+std::vector<std::stack<bool>> bool_values;
+std::vector<std::stack<float>> float_values;
+std::vector<std::stack<std::wstring>> string_values;
+std::vector<int> char_values;
 
 std::vector<int *> int_values_arr;
 std::vector<bool *> bool_values_arr;
 std::vector<float *> float_values_arr;
 std::vector<std::wstring *> string_values_arr;
+std::vector<int *> char_values_arr;
 
-std::vector<std::vector<int> > int_sizes, bool_sizes, float_sizes, string_sizes;
+std::vector<std::vector<int> > int_sizes, bool_sizes, float_sizes, string_sizes, char_sizes;
+
+std::stack<int> empty_int_stack;
+std::stack<bool> empty_bool_stack;
+std::stack<float> empty_float_stack;
+std::stack<std::wstring> empty_wstring_stack;
 
 int push_value(TYPE type)
 {
 	if (type.basic == TYPES::INT_ && type.depth == 0) {
-		int_values.push_back(0); return int_values.size() - 1;
+		int_values.push_back(empty_int_stack); return int_values.size() - 1;
 	}
 	if (type.basic == TYPES::CHAR_ && type.depth == 0) {
-		int_values.push_back(0); return int_values.size() - 1;
+		int_values.push_back(empty_int_stack); return int_values.size() - 1;
 	}
 	if (type.basic == TYPES::BOOL_ && type.depth == 0) {
-		bool_values.push_back(0); return bool_values.size() - 1;
+		bool_values.push_back(empty_bool_stack); return bool_values.size() - 1;
 	}
 	if (type.basic == TYPES::FLOAT_ && type.depth == 0) {
-		float_values.push_back(0); return float_values.size() - 1;
+		float_values.push_back(empty_float_stack); return float_values.size() - 1;
 	}
 	if (type.basic == TYPES::STRING_ && type.depth == 0) {
-		string_values.push_back(L""); return string_values.size() - 1;
+		string_values.push_back(empty_wstring_stack); return string_values.size() - 1;
 	}
 	if (type.basic == TYPES::INT_ && type.depth == 1) {
 		int_values_arr.push_back({}); return int_values_arr.size() - 1;
@@ -70,10 +78,10 @@ void set_values_function(TID* tree)
 {
 	tree->push_value = push_value;
 
-	int_values.push_back(0);
-	bool_values.push_back(0);
-	float_values.push_back(0);
-	string_values.push_back(L"");
+	int_values.push_back(empty_int_stack);
+	bool_values.push_back(empty_bool_stack);
+	float_values.push_back(empty_float_stack);
+	string_values.push_back(empty_wstring_stack);
 	int_values_arr.push_back({});
 	bool_values_arr.push_back({});
 	float_values_arr.push_back({});
@@ -84,7 +92,7 @@ void set_values_function(TID* tree)
 	string_sizes.push_back({ 0 });
 }
 
-
+std::stack<lexem> execution_stack;
 
 void setLocale(std::wistream &str)
 {
@@ -320,8 +328,177 @@ void getLexemsUsingMatch (std::wstring text, std::vector<std::wregex>& regexes, 
 	}
 }
 
+std::wstring boolToLexString (bool b) {
+	if (b) {
+		return L"true";
+	}
+	else {
+		return L"false";
+	}
+}
+
+lexem castToBool (lexem input) {
+	if (input.first == LEX_BOOL) {
+		return input;
+	}
+	if (input.first == LEX_INT) {
+		input.first = LEX_BOOL;
+		bool castedBool = std::stoi (input.second);
+		input.second = boolToLexString (castedBool);
+		return input;
+	}
+	if (input.first == LEX_FLOAT) {
+		input.first = LEX_BOOL;
+		bool castedBool = std::stod (input.second);
+		input.second = boolToLexString (castedBool);
+		return input;
+	}
+	if (input.first == LEX_CHAR) {
+		input.first = LEX_BOOL;
+		bool castedBool = std::stoi (input.second);
+		input.second = boolToLexString (castedBool);
+		return input;
+	}
+	if (input.first == LEX_STRING) {
+		input.first = LEX_INT;
+		bool castedBool = input.second.size ()-2;
+		input.second = boolToLexString (castedBool);
+		return input;
+	}
+	throw std::invalid_argument ("I don't know how to cast " + std::to_string(input.first) + " to bool");
+}
+
+lexem castToInt (lexem input) {
+	if (input.first == LEX_BOOL) {
+		input.first = LEX_INT;
+		if (input.second == L"true") {
+			input.second = L"1";
+		}
+		else {
+			input.second = L"0";
+		}
+	}
+	if (input.first == LEX_INT) {
+		return input;
+	}
+	if (input.first == LEX_FLOAT) {
+		input.first = LEX_INT;
+		int castedInt = std::stod (input.second);
+		input.second = std::to_wstring (castedInt);
+		return input;
+	}
+	if (input.first == LEX_CHAR) {
+		input.first = LEX_INT;
+		int castedInt = std::stoi (input.second);
+		input.second = std::to_wstring (castedInt);
+		return input;
+	}
+	if (input.first == LEX_STRING) {
+		input.first = LEX_INT;
+		std::wstring stringToCast = input.second.substr (1, input.second.size () - 2);
+		int castedInt = std::stoi(stringToCast);
+		input.second = std::to_wstring (castedInt);
+		return input;
+	}
+	throw std::invalid_argument ("I don't know how to cast " + std::to_string (input.first) + " to int");
+}
+
+lexem castToFloat (lexem input) {
+	if (input.first == LEX_BOOL) {
+		input.first = LEX_FLOAT;
+		if (input.second == L"true") {
+			input.second = L"1,0";
+		}
+		else {
+			input.second = L"0,0";
+		}
+	}
+	if (input.first == LEX_INT) {
+		input.first = LEX_FLOAT;
+		double castedDouble = std::stod (input.second);
+		input.second = std::to_wstring (castedDouble);
+		return input;
+	}
+	if (input.first == LEX_FLOAT) {
+		return input;
+	}
+	if (input.first == LEX_CHAR) {
+		input.first = LEX_FLOAT;
+		double castedDouble = std::stod (input.second);
+		input.second = std::to_wstring (castedDouble);
+		return input;
+	}
+	if (input.first == LEX_STRING) {
+		input.first = LEX_FLOAT;
+		std::wstring stringToCast = input.second.substr (1, input.second.size () - 2);
+		double castedDouble = std::stod (stringToCast);
+		input.second = std::to_wstring (castedDouble);
+		return input;
+	}
+	throw std::invalid_argument ("I don't know how to cast " + std::to_string (input.first) + " to float");
+}
+
+lexem castToString (lexem input) {
+	input.first = LEX_STRING;
+	input.second += L"\"";
+	input.second = L"\"" + input.second;
+	return input; // оооо дааааа самый офигенный каст из всех )))
+}
+
+lexem castToChar (lexem input) {
+	if (input.first == LEX_BOOL) {
+		input.first = LEX_CHAR;
+		if (input.second == L"true") {
+			char castedChar = 1;
+			input.second = L"'";
+			input.second += castedChar;
+			input.second += L"'";
+		}
+		else {
+			char castedChar = 0;
+			input.second = L"'";
+			input.second += castedChar;
+			input.second += L"'";
+		}
+	}
+	if (input.first == LEX_INT) {
+		input.first = LEX_CHAR;
+		char castedChar = std::stoi (input.second);
+		input.second = L"'";
+		input.second += castedChar;
+		input.second += L"'";
+		return input;
+	}
+	if (input.first == LEX_FLOAT) {
+		input.first = LEX_CHAR;
+		char castedChar = int(std::stod (input.second));
+		input.second = L"'";
+		input.second += castedChar;
+		input.second += L"'";
+		return input;
+	}
+	if (input.first == LEX_CHAR) {
+		return input;
+	}
+	if (input.first == LEX_STRING) {
+		input.first = LEX_CHAR;
+		std::wstring stringToCast = input.second.substr (1, input.second.size () - 2);
+		char castedChar = stringToCast[0];
+		input.second = L"'";
+		input.second += castedChar;
+		input.second += L"'";
+		return input;
+	}
+	throw std::invalid_argument ("I don't know how to cast " + std::to_string (input.first) + " to char");
+}
+
+
 int main()
 {
+	empty_int_stack.push (0);
+	empty_bool_stack.push (false);
+	empty_float_stack.push (0);
+	empty_wstring_stack.push (L"");
 	setlocale(LC_ALL, "Russian");
 	std::wcout.imbue(rusLoc);
 	std::wcin.imbue(rusLoc);
@@ -381,5 +558,124 @@ int main()
 		if (type == LEX_OPERATION)
 			typis += L"OPERATION";
 		std::wcout << i << ". {" << typis << ", \"" << polis[i].second << "\"}\n";
+	}
+	try {
+		int pos = 0; // текущая позиция
+		while (pos < polis.size ()) {
+			// если встретили адрес переменную или константу
+			if (polis[pos].first != LEX_OPERATION) {
+				// пихаем её в с тек
+				execution_stack.push (polis[pos]);
+				// и спокойно шуруем дальше
+				++pos; continue;
+			}
+			// иначе мы словили оператор и надо его обработать
+			// если мы словили !! то 
+			if (polis[pos].second == L"!!") {
+				// меняем pos на последнее значение в стеке
+				pos = std::stoi (execution_stack.top ().second);
+				// удаляем лишнее из стека
+				execution_stack.pop ();
+				// и идем дальше
+				continue;
+			}
+			// если мы словили ?! то
+			if (polis[pos].second == L"?!") {
+				// берем цифирь из стека
+				int posToJump = std::stoi (execution_stack.top ().second); execution_stack.pop ();
+				std::wstring boolToAnalyze;
+				// если у нас наверху не адрес
+				if (!(execution_stack.top ().first & LEX_ADRESS)) {
+					// конвертируем верхушку стека в bool
+					lexem boolLexem = castToBool (execution_stack.top ());
+					execution_stack.pop ();
+					boolToAnalyze = boolLexem.second;
+				}
+				else {
+					lexem boolLexem = execution_stack.top (); execution_stack.pop ();
+					boolLexem.first -= LEX_ADRESS;
+					if (boolLexem.first == LEX_INT) {
+						boolLexem.second = std::to_wstring(int_values[std::stoi (boolLexem.second)].top ());
+					} else if (boolLexem.first == LEX_BOOL) {
+						boolLexem.second = boolToLexString (bool_values[std::stoi (boolLexem.second)].top ());
+					}
+					else if (boolLexem.first == LEX_FLOAT) {
+						boolLexem.second = std::to_wstring (float_values[std::stoi (boolLexem.second)].top ());
+					}
+					else if (boolLexem.first == LEX_STRING) {
+						boolLexem.second = string_values[std::stoi (boolLexem.second)].top ();
+					}
+					else if (boolLexem.first == LEX_CHAR) {
+						boolLexem.second = L"'" + char(int_values[std::stoi (boolLexem.second)].top ());
+						boolLexem.second += L"'";
+					}
+					boolLexem = castToBool (boolLexem);
+				}
+				// если булл = false то идем меняем pos на цифирь
+				if (boolToAnalyze == L"false") {
+					pos = posToJump;
+					continue;
+				}
+				else {
+					++pos; continue;
+				}
+			}
+			// если мы словили out то выводим последнюю хрень из стека
+			if (polis[pos].second == L"out") {
+				lexem lexemForOutput = execution_stack.top (); execution_stack.pop ();
+				std::wstring stringForOutput = lexemForOutput.second;
+				if (lexemForOutput.first == LEX_STRING || lexemForOutput.first == LEX_CHAR) {
+					stringForOutput = stringForOutput.substr (1, stringForOutput.size () - 2);
+				}
+				std::wcout << stringForOutput;
+				++pos;
+				continue;
+			}
+			// если мы словили in то надо считать и запихать в стек строку
+			if (polis[pos].second == L"in") {
+				std::wstring enteredString;
+				std::wcin >> enteredString;
+				lexem newLexem;
+				newLexem.first = LEX_STRING;
+				newLexem.second = enteredString;
+				execution_stack.push (newLexem);
+				++pos; continue;
+			}
+			// если мы словили = то присваиваем
+			if (polis[pos].second == L"=") {
+				lexem whatToAssign = execution_stack.top (); execution_stack.pop ();
+				lexem whereToAssign = execution_stack.top (); execution_stack.pop ();
+				whereToAssign.first -= LEX_ADRESS;
+				if (whereToAssign.first == LEX_INT) {
+
+				}
+			}
+			// если мы словили cast то берем во что кастить, что кастить, кастим и пихаем в стек
+			if (polis[pos].second == L"cast") {
+				lexem howToCast = execution_stack.top (); execution_stack.pop ();
+				lexem whatToCast = execution_stack.top (); execution_stack.pop ();
+				if (howToCast.second == L"1") {
+					whatToCast = castToInt (whatToCast);
+				} else if (howToCast.second == L"2") {
+					whatToCast = castToBool (whatToCast);
+				} else if (howToCast.second == L"3") {
+					whatToCast = castToFloat (whatToCast);
+				}
+				else if (howToCast.second == L"4") {
+					whatToCast = castToString (whatToCast);
+				}
+				else if (howToCast.second == L"5") {
+					whatToCast = castToChar (whatToCast);
+				}
+				execution_stack.push (whatToCast);
+				++pos; continue;
+			}
+			//TODO вот эта херь нужна только для отладки чтоб прога не висла, потом её надо убрать
+			pos++;
+		}
+		std::cout << std::endl << "Finished without any mistakes! :)";
+	}
+	catch (std::exception& e) {
+		std::cout << e.what () << std::endl;
 	}
 }
