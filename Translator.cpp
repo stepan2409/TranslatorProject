@@ -389,7 +389,7 @@ lexem castToInt (lexem input) {
 	}
 	if (input.first == LEX_CHAR) {
 		input.first = LEX_INT;
-		int castedInt = std::stoi (input.second);
+		int castedInt = input.second[1];
 		input.second = std::to_wstring (castedInt);
 		return input;
 	}
@@ -439,9 +439,11 @@ lexem castToFloat (lexem input) {
 }
 
 lexem castToString (lexem input) {
-	input.first = LEX_STRING;
-	input.second += L"\"";
-	input.second = L"\"" + input.second;
+	if (input.first != LEX_STRING) {
+		input.first = LEX_STRING;
+		input.second += L"\"";
+		input.second = L"\"" + input.second;
+	}
 	return input; // оооо дааааа самый офигенный каст из всех )))
 }
 
@@ -492,6 +494,41 @@ lexem castToChar (lexem input) {
 	throw std::invalid_argument ("I don't know how to cast " + std::to_string (input.first) + " to char");
 }
 
+void pairCast () {
+	lexem first = execution_stack.top (); execution_stack.pop ();
+	lexem second = execution_stack.top (); execution_stack.pop ();
+	if (first.first == LEX_STRING || second.first == LEX_STRING) {
+		first = castToString (first);
+		second = castToString (second);
+		execution_stack.push (second);
+		execution_stack.push (first);
+		return;
+	}
+	if (first.first == LEX_FLOAT || second.first == LEX_FLOAT) {
+		first = castToFloat (first);
+		second = castToFloat (second);
+		execution_stack.push (second);
+		execution_stack.push (first);
+		return;
+	}
+	if (first.first == LEX_INT || second.first == LEX_INT) {
+		first = castToInt (first);
+		second = castToInt (second);
+		execution_stack.push (second);
+		execution_stack.push (first);
+		return;
+	}
+	if (first.first == LEX_CHAR || second.first == LEX_CHAR) {
+		first = castToChar (first);
+		second = castToChar (second);
+		execution_stack.push (second);
+		execution_stack.push (first);
+		return;
+	}
+	execution_stack.push (second);
+	execution_stack.push (first);
+	return;
+}
 
 int main()
 {
@@ -627,7 +664,7 @@ int main()
 				if (lexemForOutput.first == LEX_STRING || lexemForOutput.first == LEX_CHAR) {
 					stringForOutput = stringForOutput.substr (1, stringForOutput.size () - 2);
 				}
-				std::wcout << stringForOutput;
+				std::wcout << stringForOutput << std::endl;
 				++pos;
 				continue;
 			}
@@ -643,12 +680,7 @@ int main()
 			}
 			// если мы словили = то присваиваем
 			if (polis[pos].second == L"=") {
-				lexem whatToAssign = execution_stack.top (); execution_stack.pop ();
-				lexem whereToAssign = execution_stack.top (); execution_stack.pop ();
-				whereToAssign.first -= LEX_ADRESS;
-				if (whereToAssign.first == LEX_INT) {
-
-				}
+				// тут должен быть код для присваивания
 			}
 			// если мы словили cast то берем во что кастить, что кастить, кастим и пихаем в стек
 			if (polis[pos].second == L"cast") {
@@ -670,7 +702,314 @@ int main()
 				execution_stack.push (whatToCast);
 				++pos; continue;
 			}
-			//TODO вот эта херь нужна только для отладки чтоб прога не висла, потом её надо убрать
+			if (polis[pos].second == L"+") {
+				pairCast();
+				lexem first = execution_stack.top (); execution_stack.pop ();
+				lexem second = execution_stack.top (); execution_stack.pop ();
+				if (first.first == LEX_STRING) {
+					std::wstring firstString = first.second.substr(1, first.second.size()-2);
+					std::wstring secondString = second.second.substr(1, second.second.size()-2);
+					std::wstring resultString = L"\"" + secondString + firstString + L"\"";
+					lexem resultLexem;
+					resultLexem.first = LEX_STRING;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}
+				if (first.first == LEX_FLOAT) {
+					double firstDouble = std::stod(first.second);
+					double secondDouble = std::stod(second.second);
+					std::wstring resultString = std::to_wstring(secondDouble + firstDouble);
+					lexem resultLexem;
+					resultLexem.first = LEX_FLOAT;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}
+				if (first.first == LEX_INT) {
+					int firstInt = std::stoi (first.second);
+					int secondInt = std::stoi (second.second);
+					std::wstring resultString = std::to_wstring (secondInt + firstInt);
+					lexem resultLexem;
+					resultLexem.first = LEX_INT;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}
+				if (first.first == LEX_CHAR) {
+					char firstChar = first.second[1];
+					char secondChar = second.second[1];
+					std::wstring resultString = L"'";
+					resultString += char(firstChar+secondChar);
+					resultString += L"'";
+					lexem resultLexem;
+					resultLexem.first = LEX_CHAR;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}
+				if (first.first == LEX_BOOL) {
+					bool firstBool = first.second[0] == 't';
+					bool secondBool = second.second[0] == 't';
+					std::wstring resultString = boolToLexString(firstBool + secondBool);
+					lexem resultLexem;
+					resultLexem.first = LEX_BOOL;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}
+			}
+			if (polis[pos].second == L"-") {
+				pairCast ();
+				lexem first = execution_stack.top (); execution_stack.pop ();
+				lexem second = execution_stack.top (); execution_stack.pop ();
+				/*if (first.first == LEX_STRING) {
+					std::wstring firstString = first.second.substr (1, first.second.size () - 2);
+					std::wstring secondString = second.second.substr (1, second.second.size () - 2);
+					std::wstring resultString = L"\"" + secondString + firstString + L"\"";
+					lexem resultLexem;
+					resultLexem.first = LEX_STRING;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}*/
+				if (first.first == LEX_FLOAT) {
+					double firstDouble = std::stod (first.second);
+					double secondDouble = std::stod (second.second);
+					std::wstring resultString = std::to_wstring (secondDouble - firstDouble);
+					lexem resultLexem;
+					resultLexem.first = LEX_FLOAT;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}
+				if (first.first == LEX_INT) {
+					int firstInt = std::stoi (first.second);
+					int secondInt = std::stoi (second.second);
+					std::wstring resultString = std::to_wstring (secondInt - firstInt);
+					lexem resultLexem;
+					resultLexem.first = LEX_INT;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}
+				if (first.first == LEX_CHAR) {
+					char firstChar = first.second[1];
+					char secondChar = second.second[1];
+					std::wstring resultString = L"'";
+					resultString += char (secondChar - firstChar);
+					resultString += L"'";
+					lexem resultLexem;
+					resultLexem.first = LEX_CHAR;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}
+				if (first.first == LEX_BOOL) {
+					bool firstBool = first.second[0] == 't';
+					bool secondBool = second.second[0] == 't';
+					std::wstring resultString = boolToLexString (secondBool - firstBool);
+					lexem resultLexem;
+					resultLexem.first = LEX_BOOL;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}
+			}
+			if (polis[pos].second == L"*") {
+				pairCast ();
+				lexem first = execution_stack.top (); execution_stack.pop ();
+				lexem second = execution_stack.top (); execution_stack.pop ();
+				/*if (first.first == LEX_STRING) {
+					std::wstring firstString = first.second.substr (1, first.second.size () - 2);
+					std::wstring secondString = second.second.substr (1, second.second.size () - 2);
+					std::wstring resultString = L"\"" + secondString + firstString + L"\"";
+					lexem resultLexem;
+					resultLexem.first = LEX_STRING;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}*/
+				if (first.first == LEX_FLOAT) {
+					double firstDouble = std::stod (first.second);
+					double secondDouble = std::stod (second.second);
+					std::wstring resultString = std::to_wstring (secondDouble * firstDouble);
+					lexem resultLexem;
+					resultLexem.first = LEX_FLOAT;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}
+				if (first.first == LEX_INT) {
+					int firstInt = std::stoi (first.second);
+					int secondInt = std::stoi (second.second);
+					std::wstring resultString = std::to_wstring (secondInt * firstInt);
+					lexem resultLexem;
+					resultLexem.first = LEX_INT;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}
+				if (first.first == LEX_CHAR) {
+					char firstChar = first.second[1];
+					char secondChar = second.second[1];
+					std::wstring resultString = L"'";
+					resultString += char (secondChar * firstChar);
+					resultString += L"'";
+					lexem resultLexem;
+					resultLexem.first = LEX_CHAR;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}
+				if (first.first == LEX_BOOL) {
+					bool firstBool = first.second[0] == 't';
+					bool secondBool = second.second[0] == 't';
+					std::wstring resultString = boolToLexString (secondBool * firstBool);
+					lexem resultLexem;
+					resultLexem.first = LEX_BOOL;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}
+			}
+			if (polis[pos].second == L"/") {
+				pairCast ();
+				lexem first = execution_stack.top (); execution_stack.pop ();
+				lexem second = execution_stack.top (); execution_stack.pop ();
+				/*if (first.first == LEX_STRING) {
+					std::wstring firstString = first.second.substr (1, first.second.size () - 2);
+					std::wstring secondString = second.second.substr (1, second.second.size () - 2);
+					std::wstring resultString = L"\"" + secondString + firstString + L"\"";
+					lexem resultLexem;
+					resultLexem.first = LEX_STRING;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}*/
+				if (first.first == LEX_FLOAT) {
+					double firstDouble = std::stod (first.second);
+					if (firstDouble == 0) {
+						throw std::exception ("Attempt of deviding by zero");
+					}
+					double secondDouble = std::stod (second.second);
+					std::wstring resultString = std::to_wstring (secondDouble / firstDouble);
+					lexem resultLexem;
+					resultLexem.first = LEX_FLOAT;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}
+				if (first.first == LEX_INT) {
+					int firstInt = std::stoi (first.second);
+					if (firstInt == 0) {
+						throw std::exception ("Attempt of deviding by zero");
+					}
+					int secondInt = std::stoi (second.second);
+					std::wstring resultString = std::to_wstring (secondInt / firstInt);
+					lexem resultLexem;
+					resultLexem.first = LEX_INT;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}
+				if (first.first == LEX_CHAR) {
+					char firstChar = first.second[1];
+					if (firstChar == 0) {
+						throw std::exception ("Attempt of deviding by zero");
+					}
+					char secondChar = second.second[1];
+					std::wstring resultString = L"'";
+					resultString += char (secondChar / firstChar);
+					resultString += L"'";
+					lexem resultLexem;
+					resultLexem.first = LEX_CHAR;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}
+				if (first.first == LEX_BOOL) {
+					bool firstBool = first.second[0] == 't';
+					if (firstBool == 0) {
+						throw std::exception ("Attempt of deviding by zero");
+					}
+					bool secondBool = second.second[0] == 't';
+					std::wstring resultString = boolToLexString (secondBool / firstBool);
+					lexem resultLexem;
+					resultLexem.first = LEX_BOOL;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}
+			}
+			if (polis[pos].second == L"%") {
+				pairCast ();
+				lexem first = execution_stack.top (); execution_stack.pop ();
+				lexem second = execution_stack.top (); execution_stack.pop ();
+				/*if (first.first == LEX_STRING) {
+					std::wstring firstString = first.second.substr (1, first.second.size () - 2);
+					std::wstring secondString = second.second.substr (1, second.second.size () - 2);
+					std::wstring resultString = L"\"" + secondString + firstString + L"\"";
+					lexem resultLexem;
+					resultLexem.first = LEX_STRING;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}*/
+				if (first.first == LEX_FLOAT) {
+					throw std::exception("Cannot use % with floats");
+					double firstDouble = std::stod (first.second);
+					double secondDouble = std::stod (second.second);
+					std::wstring resultString = std::to_wstring (0);
+					lexem resultLexem;
+					resultLexem.first = LEX_FLOAT;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}
+				if (first.first == LEX_INT) {
+					int firstInt = std::stoi (first.second);
+					if (firstInt == 0) {
+						throw std::exception ("Attempt of deviding by zero");
+					}
+					int secondInt = std::stoi (second.second);
+					std::wstring resultString = std::to_wstring (secondInt % firstInt);
+					lexem resultLexem;
+					resultLexem.first = LEX_INT;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}
+				if (first.first == LEX_CHAR) {
+					char firstChar = first.second[1];
+					if (firstChar == 0) {
+						throw std::exception ("Attempt of deviding by zero");
+					}
+					char secondChar = second.second[1];
+					std::wstring resultString = L"'";
+					resultString += char (secondChar % firstChar);
+					resultString += L"'";
+					lexem resultLexem;
+					resultLexem.first = LEX_CHAR;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}
+				if (first.first == LEX_BOOL) {
+					bool firstBool = first.second[0] == 't';
+					if (!firstBool) {
+						throw std::exception ("Attempt of deviding by zero");
+					}
+					bool secondBool = second.second[0] == 't';
+					std::wstring resultString = boolToLexString (secondBool % firstBool);
+					lexem resultLexem;
+					resultLexem.first = LEX_BOOL;
+					resultLexem.second = resultString;
+					execution_stack.push (resultLexem);
+					++pos; continue;
+				}
+			}
+			//TODO вот эта херь нужна только для отладки чтоб прога не висла на ещё не дописанных функциях, потом её надо убрать
 			pos++;
 		}
 		std::cout << std::endl << "Finished without any mistakes! :)";
