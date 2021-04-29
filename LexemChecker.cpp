@@ -152,8 +152,6 @@ bool LexemChecker::checkPointer() // <указатель>
 
 		TYPE typ = tid_tree_->get_type(nam);
 		int arg_count = checkFuctionCall();
-		if (tid_tree_->is_template(nam, typ))
-			runException(L"Fuction must be decripted before call");
 		if (arg_count)
 		{
 			if (arg_count == -1)
@@ -180,7 +178,9 @@ bool LexemChecker::checkPointer() // <указатель>
 				runException(L"Too many arguments in function");
 			int code_line = tid_tree_->get_code(nam);
 			if (code_line == -1)
-				runException(L"We have a bug in checkPointer");
+			{
+				template_calls[nam].push_back(polis_.size());
+			}
 			polis_.push_back({ LEX_INT, std::to_wstring(code_line) });
 			polis_.push_back({ LEX_OPERATION, L"push-stack" });
 			polis_.push_back({ LEX_OPERATION, L"!!" });
@@ -291,8 +291,8 @@ bool LexemChecker::checkShift(bool after_type) // <сдвиг> если after_type = 1, т
 
 bool LexemChecker::checkSign1() // <знак 1> 
 {
-	return match(6, L"=") || match(6, L"+=") || match(6, L"-=") || match(6, L"*=")
-		|| match(6, L"/=") || match(6, L"|=") || match(6, L"&=");
+	return match(6, L"=");/* || match(6, L"+=") || match(6, L"-=") || match(6, L"*=")
+		|| match(6, L"/=") || match(6, L"|=") || match(6, L"&=");*/
 }
 bool LexemChecker::checkSign2() // <знак 2> 
 {
@@ -355,11 +355,11 @@ bool LexemChecker::checkSign14() // <знак 14>
 }
 bool LexemChecker::checkSign15() // <знак 15> 
 {
-	return match(6, L"++") || match(6, L"--");
+	return 0; /* match(6, L"++") || match(6, L"--");*/
 }
 bool LexemChecker::checkSign16() // <знак 16> 
 {
-	return match(6, L"++") || match(6, L"--");
+	return 0; /*match(6, L"++") || match(6, L"--");*/
 }
 bool LexemChecker::checkExpression() // <выражение> 
 {
@@ -367,7 +367,7 @@ bool LexemChecker::checkExpression() // <выражение>
 	{
 		while (checkSign1())
 		{
-			if (!checkExp2())
+			if (!checkExpression())
 				runException(L"Expected value in expression");
 			TYPE type2 = popType();
 			TYPE type1 = popType();
@@ -653,7 +653,11 @@ bool LexemChecker::checkExp11() // <выр 11>
 			if (type1.depth > 0 || type2.depth > 0)
 				runException(L"Incompatible types in expression");
 			if (type1 == FLOAT_TYPE || type2 == FLOAT_TYPE)
+			{
+				if (popSign(0).second == L"%")
+					runException(L"Incompatible types in expression");
 				exp_type = FLOAT_TYPE;
+			}
 			type_stack.push(exp_type);
 			polis_.push_back(popSign());
 		}
@@ -676,7 +680,7 @@ bool LexemChecker::checkExp12() // <выр 12>
 		if (type == BOOL_TYPE)
 			type_stack.push(type);
 		if (type == INT_TYPE || type == CHAR_TYPE)
-			type_stack.push(INT_TYPE);
+			type_stack.push(BOOL_TYPE);
 		else runException(L"Incorrect type in expression");
 		while (sgn--)
 		{
@@ -911,6 +915,7 @@ bool LexemChecker::checkExpOperator() // <оператор выражения>
 {
 	if (checkExpression())
 	{
+		polis_.push_back({ LEX_OPERATION, L"forget" });
 		popType();
 		return 1;
 	}
@@ -1043,7 +1048,7 @@ bool LexemChecker::checkFor() // <оператор for>
 		polis_.push_back({ LEX_INT, L"@" });
 		polis_.push_back({ LEX_OPERATION, L"!!" });
 
-		checkForOperator();
+		checkExpression();
 		if (!match(7, L";"))
 			runException(L"Expected ';'");
 		int code_line2 = polis_.size();
@@ -1119,7 +1124,11 @@ bool LexemChecker::checkGoto() // <оператор перехода>
 			runException(L"This block cannot have return operator");
 		tryCast(return_type, popType());
 		popType();
-		polis_.push_back({ LEX_OPERATION, L"ret" });
+		polis_.push_back(tid_tree_->get_return_adress());
+		polis_.push_back({ LEX_OPERATION, L"arg=" });
+		tid_tree_->push_return_line(polis_.size());
+		polis_.push_back({ LEX_INT, L"@" });
+		polis_.push_back({ LEX_OPERATION, L"!!" });
 		return 1;
 	}
 	if (match(1, L"goto"))
@@ -1151,6 +1160,8 @@ bool LexemChecker::checkDescription() // <описание>
 	{
 		if (!checkName())
 			runException(L"Expected identifier");
+		std::vector<std::wstring> array_ids;
+		int array_line;
 		int var_type = 0;
 		std::wstring nam = popName(0);
 		bool is_temp = tid_tree_->is_template(nam, popType(0));
@@ -1163,7 +1174,13 @@ bool LexemChecker::checkDescription() // <описание>
 		}
 		TYPE typ = popType();
 		if (typ.depth > 0)
-			polis_.push_back({ LEX_OPERATION, L"set-array" });
+		{
+			array_line = polis_.size();
+			polis_.push_back({ LEX_STRING, L"" });
+			polis_.push_back({ LEX_INT, L"@" });
+			polis_.push_back({ LEX_INT, L"@" });
+			polis_.push_back({ LEX_OPERATION, L"set-arrays" });
+		}
 		if (!is_temp)
 		{
 			if (match(6, L"="))
@@ -1176,11 +1193,14 @@ bool LexemChecker::checkDescription() // <описание>
 				tryCast(typ, exp_type);
 				popType();
 				polis_.push_back({ LEX_OPERATION, L"=" });
+				polis_.push_back({ LEX_OPERATION, L"forget" });
 				var_type = 1;
 				pushId(popName(), typ);
 				polis_[code_line] = tid_tree_->get_adress(nam);
 			}
 			else pushId(popName(), typ);
+			if (typ.depth > 0)
+				array_ids.push_back(tid_tree_->get_adress(nam).second);
 			while (match(7, L","))
 			{
 				if (var_type == 0)
@@ -1200,10 +1220,21 @@ bool LexemChecker::checkDescription() // <описание>
 					pushId(popName(), typ);
 					polis_[code_line] = tid_tree_->get_adress(nam2);
 					polis_.push_back({ LEX_OPERATION, L"=" });
+					polis_.push_back({ LEX_OPERATION, L"forget" });
 				}
 				else pushId(popName(), typ);
+				if (typ.depth > 0)
+					array_ids.push_back(tid_tree_->get_adress(nam2).second);
 				var_type = 1;
 			}
+		}
+		if (typ.depth > 0)
+		{
+			polis_[array_line + 1].second = std::to_wstring(array_line);
+			for (std::wstring id : array_ids) {
+				polis_[array_line].second += id + L" ";
+			}
+			polis_[array_line + 2].second = std::to_wstring(typ.basic);
 		}
 		if (!var_type && match(7, L"("))
 		{
@@ -1211,6 +1242,7 @@ bool LexemChecker::checkDescription() // <описание>
 			TID* last_tid = tid_tree_;
 			pushBlock();
 			tid_tree_->set_return_type(typ);
+			tid_tree_->set_return_adress(last_tid->get_adress(nam));
 			bool has_args = 0;
 			std::vector<TYPE>* args = tid_tree_->get_arguments(nam);
 			if (args == nullptr)
@@ -1243,12 +1275,28 @@ bool LexemChecker::checkDescription() // <описание>
 					polis_.push_back({ LEX_INT, L"@" });
 					polis_.push_back({ LEX_OPERATION, L"!!" });
 					last_tid->push_code(nam, polis_.size());
+
+					if (template_calls.find(nam) != template_calls.end()) {
+						for (int line : template_calls[nam]) {
+							polis_[line].second = std::to_wstring(polis_.size());
+						}
+					}
+					polis_.push_back({ LEX_INT, std::to_wstring(push_func_memory()) });
+					polis_.push_back({ LEX_OPERATION, L"push-mem" });
 					std::vector<std::wstring> new_names;
 
 					if (checkKnown(popName(0)))
 						runException(L"Identifier '" + popName(0) + L"' is already used");
 					new_names.push_back(popName(0));
 					pushId(popName(), first_type);
+
+					if (first_type.depth > 0)
+					{
+						polis_.push_back({ LEX_STRING, tid_tree_->get_adress(new_names.back()).second });
+						polis_.push_back({ LEX_INT, L"1" });
+						polis_.push_back({ LEX_INT, std::to_wstring(first_type.basic) });
+						polis_.push_back({ LEX_OPERATION, L"set-arrays" });
+					}
 
 					int temp_step = 1;
 					while (match(7, L","))
@@ -1272,6 +1320,13 @@ bool LexemChecker::checkDescription() // <описание>
 							runException(L"Identifier '" + popName(0) + L"' is already used");
 						new_names.push_back(popName(0));
 						pushId(popName(), popType());
+						if (first_type.depth > 0)
+						{
+							polis_.push_back({ LEX_STRING, tid_tree_->get_adress(new_names.back()).second });
+							polis_.push_back({ LEX_INT, L"1" });
+							polis_.push_back({ LEX_INT, std::to_wstring(first_type.basic) });
+							polis_.push_back({ LEX_OPERATION, L"set-arrays" });
+						}
 					}
 					if (is_temp && temp_step < args->size())
 						runException(L"Too few arguments in description");
@@ -1281,12 +1336,24 @@ bool LexemChecker::checkDescription() // <описание>
 					{
 						polis_.push_back(tid_tree_->get_adress(new_names.back()));
 						polis_.push_back({ LEX_OPERATION, L"arg=" });
+						polis_.push_back({ LEX_OPERATION, L"forget" });
 						new_names.pop_back();
 					}
 					if (!checkBlock())
 						runException(L"Expected description");
 					pushFunctionDefault(typ);
-					polis_.push_back({ LEX_OPERATION, L"ret" });
+					polis_.push_back(tid_tree_->get_return_adress());
+					polis_.push_back({ LEX_OPERATION, L"arg=" });
+					//polis_.push_back(tid_tree_->get_adress(nam));
+					std::vector<int>& return_lines = *tid_tree_->get_return_lines();
+					for (int line : return_lines) {
+						polis_[line].second = std::to_wstring(polis_.size());
+					}
+					polis_.push_back({ LEX_INT, std::to_wstring(pop_func_memory()) });
+					polis_.push_back({ LEX_OPERATION, L"pop-mem" });
+					polis_.push_back({ LEX_OPERATION, L"pop-stack" });
+					polis_.push_back({ LEX_OPERATION, L"!!" });
+
 					popBlock();
 					polis_[code_line1].second = std::to_wstring(polis_.size());
 					return 1;
@@ -1299,11 +1366,23 @@ bool LexemChecker::checkDescription() // <описание>
 				int code_line2 = polis_.size();
 				polis_.push_back({ LEX_INT, L"@" });
 				polis_.push_back({ LEX_OPERATION, L"!!" });
+				polis_.push_back({ LEX_INT, std::to_wstring(push_func_memory()) });
+				polis_.push_back({ LEX_OPERATION, L"push-mem" });
 				if (checkBlock())
 				{
 					pushFunctionDefault(typ);
-					polis_.push_back({ LEX_OPERATION, L"ret" });
+					polis_.push_back(tid_tree_->get_return_adress());
+					polis_.push_back({ LEX_OPERATION, L"arg=" });
+					//polis_.push_back(tid_tree_->get_adress(nam));
 					last_tid->push_code(nam, code_line2+2);
+					std::vector<int>& return_lines = *tid_tree_->get_return_lines();
+					for (int line : return_lines) {
+						polis_[line].second = std::to_wstring(polis_.size());
+					}
+					polis_.push_back({ LEX_INT, std::to_wstring(pop_func_memory()) });
+					polis_.push_back({ LEX_OPERATION, L"pop-mem" });
+					polis_.push_back({ LEX_OPERATION, L"pop-stack" });
+					polis_.push_back({ LEX_OPERATION, L"!!" });
 					polis_[code_line2].second = std::to_wstring(polis_.size());
 				}
 				else if (is_temp)
@@ -1324,6 +1403,7 @@ bool LexemChecker::checkForOperator()
 {
 	if (checkExpression())
 	{
+		polis_.push_back({ LEX_OPERATION, L"forget" });
 		popType();
 		return 1;
 	}

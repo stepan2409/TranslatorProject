@@ -1,7 +1,279 @@
+Lexical analyzing...
 Successfully created:
-{1, "out"}
-{1, "char"}
+{1, "int"}
+{2, "fast_pow"}
 {7, "("}
-{4, "107.9"}
+{1, "int"}
+{2, "n"}
+{7, ","}
+{1, "int"}
+{2, "p"}
+{7, ","}
+{1, "int"}
+{2, "m"}
+{7, ")"}
+{7, "{"}
+{1, "if"}
+{7, "("}
+{2, "p"}
+{6, "=="}
+{3, "0"}
+{7, ")"}
+{1, "return"}
+{3, "1"}
+{7, ";"}
+{1, "if"}
+{7, "("}
+{2, "p"}
+{6, "%"}
+{3, "2"}
+{7, ")"}
+{1, "return"}
+{2, "n"}
+{6, "*"}
+{2, "fast_pow"}
+{7, "("}
+{2, "n"}
+{7, ","}
+{2, "p"}
+{6, "-"}
+{3, "1"}
+{7, ","}
+{2, "m"}
+{7, ")"}
+{6, "%"}
+{2, "m"}
+{7, ";"}
+{1, "int"}
+{2, "b"}
+{6, "="}
+{2, "fast_pow"}
+{7, "("}
+{2, "n"}
+{7, ","}
+{2, "p"}
+{6, "/"}
+{3, "2"}
+{7, ","}
+{2, "m"}
 {7, ")"}
 {7, ";"}
+{1, "return"}
+{2, "b"}
+{6, "*"}
+{2, "b"}
+{6, "%"}
+{2, "m"}
+{7, ";"}
+{7, "}"}
+{7, ";"}
+{1, "while"}
+{7, "("}
+{1, "true"}
+{7, ")"}
+{7, "{"}
+{1, "out"}
+{2, "fast_pow"}
+{7, "("}
+{1, "int"}
+{7, "("}
+{1, "in"}
+{7, ")"}
+{7, ","}
+{1, "int"}
+{7, "("}
+{1, "in"}
+{7, ")"}
+{7, ","}
+{1, "int"}
+{7, "("}
+{1, "in"}
+{7, ")"}
+{7, ")"}
+{7, ";"}
+{7, "}"}
+Lexical analyzing completed!
+Generated 92 lexems:
+1. {1, "int"}
+2. {2, "fast_pow"}
+3. {7, "("}
+4. {1, "int"}
+5. {2, "n"}
+6. {7, ","}
+7. {1, "int"}
+8. {2, "p"}
+9. {7, ","}
+10. {1, "int"}
+11. {2, "m"}
+12. {7, ")"}
+13. {7, "{"}
+14. {1, "if"}
+15. {7, "("}
+16. {2, "p"}
+17. {6, "=="}
+18. {3, "0"}
+19. {7, ")"}
+20. {1, "return"}
+21. {3, "1"}
+22. {7, ";"}
+23. {1, "if"}
+24. {7, "("}
+25. {2, "p"}
+26. {6, "%"}
+27. {3, "2"}
+28. {7, ")"}
+29. {1, "return"}
+30. {2, "n"}
+31. {6, "*"}
+32. {2, "fast_pow"}
+33. {7, "("}
+34. {2, "n"}
+35. {7, ","}
+36. {2, "p"}
+37. {6, "-"}
+38. {3, "1"}
+39. {7, ","}
+40. {2, "m"}
+41. {7, ")"}
+42. {6, "%"}
+43. {2, "m"}
+44. {7, ";"}
+45. {1, "int"}
+46. {2, "b"}
+47. {6, "="}
+48. {2, "fast_pow"}
+49. {7, "("}
+50. {2, "n"}
+51. {7, ","}
+52. {2, "p"}
+53. {6, "/"}
+54. {3, "2"}
+55. {7, ","}
+56. {2, "m"}
+57. {7, ")"}
+58. {7, ";"}
+59. {1, "return"}
+60. {2, "b"}
+61. {6, "*"}
+62. {2, "b"}
+63. {6, "%"}
+64. {2, "m"}
+65. {7, ";"}
+66. {7, "}"}
+67. {7, ";"}
+68. {1, "while"}
+69. {7, "("}
+70. {1, "true"}
+71. {7, ")"}
+72. {7, "{"}
+73. {1, "out"}
+74. {2, "fast_pow"}
+75. {7, "("}
+76. {1, "int"}
+77. {7, "("}
+78. {1, "in"}
+79. {7, ")"}
+80. {7, ","}
+81. {1, "int"}
+82. {7, "("}
+83. {1, "in"}
+84. {7, ")"}
+85. {7, ","}
+86. {1, "int"}
+87. {7, "("}
+88. {1, "in"}
+89. {7, ")"}
+90. {7, ")"}
+91. {7, ";"}
+92. {7, "}"}
+Syntax: OK 
+Generated 89 polis commands: 
+0. {INT, "71"}
+1. {OPERATION, "!!"}
+2. {INT, "0"}
+3. {OPERATION, "push-mem"}
+4. {LEX_ADRESS | INT, "4"}
+5. {OPERATION, "arg="}
+6. {OPERATION, "forget"}
+7. {LEX_ADRESS | INT, "3"}
+8. {OPERATION, "arg="}
+9. {OPERATION, "forget"}
+10. {LEX_ADRESS | INT, "2"}
+11. {OPERATION, "arg="}
+12. {OPERATION, "forget"}
+13. {LEX_ADRESS | INT, "3"}
+14. {INT, "0"}
+15. {OPERATION, "=="}
+16. {INT, "23"}
+17. {OPERATION, "?!"}
+18. {INT, "1"}
+19. {LEX_ADRESS | INT, "1"}
+20. {OPERATION, "arg="}
+21. {INT, "67"}
+22. {OPERATION, "!!"}
+23. {LEX_ADRESS | INT, "3"}
+24. {INT, "2"}
+25. {OPERATION, "%"}
+26. {INT, "44"}
+27. {OPERATION, "?!"}
+28. {LEX_ADRESS | INT, "2"}
+29. {LEX_ADRESS | INT, "2"}
+30. {LEX_ADRESS | INT, "3"}
+31. {INT, "1"}
+32. {OPERATION, "-"}
+33. {LEX_ADRESS | INT, "4"}
+34. {INT, "2"}
+35. {OPERATION, "push-stack"}
+36. {OPERATION, "!!"}
+37. {OPERATION, "*"}
+38. {LEX_ADRESS | INT, "4"}
+39. {OPERATION, "%"}
+40. {LEX_ADRESS | INT, "1"}
+41. {OPERATION, "arg="}
+42. {INT, "67"}
+43. {OPERATION, "!!"}
+44. {LEX_ADRESS | INT, "5"}
+45. {LEX_ADRESS | INT, "2"}
+46. {LEX_ADRESS | INT, "3"}
+47. {INT, "2"}
+48. {OPERATION, "/"}
+49. {LEX_ADRESS | INT, "4"}
+50. {INT, "2"}
+51. {OPERATION, "push-stack"}
+52. {OPERATION, "!!"}
+53. {OPERATION, "="}
+54. {OPERATION, "forget"}
+55. {LEX_ADRESS | INT, "5"}
+56. {LEX_ADRESS | INT, "5"}
+57. {OPERATION, "*"}
+58. {LEX_ADRESS | INT, "4"}
+59. {OPERATION, "%"}
+60. {LEX_ADRESS | INT, "1"}
+61. {OPERATION, "arg="}
+62. {INT, "67"}
+63. {OPERATION, "!!"}
+64. {INT, "0"}
+65. {LEX_ADRESS | INT, "1"}
+66. {OPERATION, "arg="}
+67. {INT, "0"}
+68. {OPERATION, "pop-mem"}
+69. {OPERATION, "pop-stack"}
+70. {OPERATION, "!!"}
+71. {BOOL, "true"}
+72. {INT, "89"}
+73. {OPERATION, "?!"}
+74. {OPERATION, "in"}
+75. {INT, "1"}
+76. {OPERATION, "cast"}
+77. {OPERATION, "in"}
+78. {INT, "1"}
+79. {OPERATION, "cast"}
+80. {OPERATION, "in"}
+81. {INT, "1"}
+82. {OPERATION, "cast"}
+83. {INT, "2"}
+84. {OPERATION, "push-stack"}
+85. {OPERATION, "!!"}
+86. {OPERATION, "out"}
+87. {INT, "71"}
+88. {OPERATION, "!!"}

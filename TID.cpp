@@ -33,6 +33,15 @@ std::vector<TYPE>* TID::get_arguments(std::wstring& name)
 	return nullptr;
 }
 
+std::vector<int>* TID::get_return_lines()
+{
+	if (return_type_ != NO_TYPE)
+		return &return_lines_;
+	if (parent != nullptr)
+		return parent->get_return_lines();
+	return nullptr;
+}
+
 std::wstring TID::get_any_template()
 {
 	for (auto func : func_order_)
@@ -61,6 +70,18 @@ void TID::set_return_type(TYPE type)
 {
 	return_type_ = type;
 }
+void TID::set_return_adress(lexem adress)
+{
+	return_adress_ = adress;
+}
+void TID::push_return_line(int line)
+{
+	if (return_type_ != NO_TYPE)
+		return_lines_.push_back(line);
+	if (parent != nullptr)
+		parent->push_return_line(line);
+}
+
 void TID::set_is_adress(std::wstring& name, bool value)
 {
 	if (types_.find(name) == types_.end())
@@ -111,6 +132,7 @@ bool TID::push_code(std::wstring& name, int to)
 	if (func_code_[func_order_[name]] != -1)
 		return 0;
 	func_code_[func_order_[name]] = to;
+	return_adress_ = get_adress(name);
 	return 1;
 }
 int TID::get_code(std::wstring& name)
@@ -137,6 +159,15 @@ TYPE TID::get_return_type()
 	if (parent != nullptr)
 		return parent->get_return_type();
 	return NO_TYPE;
+}
+
+lexem TID::get_return_adress()
+{
+	if (return_type_ != NO_TYPE)
+		return return_adress_;
+	if (parent != nullptr)
+		return parent->get_return_adress();
+	return {LEX_UNKNOWN, L""};
 }
 
 lexem TID::get_adress(std::wstring& name)

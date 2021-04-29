@@ -25,17 +25,15 @@ enum LEX
 	LEX_STRING = 4,
 	LEX_CHAR = 5,
 	LEX_OPERATION = 6,
-	LEX_PUNCTUATION = 7,
 	LEX_ADRESS = 8,
-	LEX_BOLL = 9,
 	LEX_ARRAY = 16
 };
 
 struct TYPE {
-	TYPES basic;
+	short basic;
 	short depth;
 	bool is_adress;
-	TYPE(TYPES basic, short depth = 0, bool is_adress = 0) : basic(basic), depth(depth), is_adress(is_adress)
+	TYPE(short basic, short depth = 0, bool is_adress = 0) : basic(basic), depth(depth), is_adress(is_adress)
 	{
 
 	}
@@ -90,6 +88,8 @@ public:
 	~TID();
 
 	void set_return_type(TYPE type);
+	void set_return_adress(lexem adress);
+	void push_return_line(int line);
 	void set_is_adress(std::wstring& name, bool value);
 	bool push_id(std::wstring& name, TYPE type);
 	bool is_template(std::wstring& name, TYPE type);
@@ -99,8 +99,10 @@ public:
 	 int get_code(std::wstring& name);
 	TYPE get_type(std::wstring& name);
 	TYPE get_return_type();
+	lexem get_return_adress();
 	lexem get_adress(std::wstring& name);
 	std::vector<TYPE>* get_arguments(std::wstring& name);
+	std::vector<int>* get_return_lines();
 
 	std::wstring get_any_template();
 
@@ -111,11 +113,12 @@ private:
 
 	std::map<std::wstring, TYPE> types_;
 	TYPE return_type_ = NO_TYPE;
-
+	lexem return_adress_;
 	std::map<std::wstring, int> func_order_;
 	std::map<std::wstring, int> var_adress_;
 	std::vector<std::vector<TYPE> > func_args_;
 	std::vector<int> func_code_;
+	std::vector<int> return_lines_;
 
 	bool search_id(std::wstring& name);
 	bool deepsearch_id(std::wstring& name);

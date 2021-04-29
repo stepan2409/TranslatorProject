@@ -11,7 +11,10 @@
 #include <map>
 #include <stack>
 #include "LexemChecker.h"
+#include "CodeRunner.h"
 
+const int MAX_SIZE = 1 << 22;
+const int MAX_STACK_SIZE = 1 << 16;
 
 const int MAX_ADDING = 10;
 typedef std::pair<int, std::wstring> lexem;
@@ -24,79 +27,150 @@ std::vector<std::stack<int>> int_values;
 std::vector<std::stack<bool>> bool_values;
 std::vector<std::stack<float>> float_values;
 std::vector<std::stack<std::wstring>> string_values;
-std::vector<int> char_values;
 
-std::vector<int *> int_values_arr;
-std::vector<bool *> bool_values_arr;
-std::vector<float *> float_values_arr;
-std::vector<std::wstring *> string_values_arr;
-std::vector<int *> char_values_arr;
+std::vector<std::stack<int *>> int_values_arr;
+std::vector<std::stack<bool *>> bool_values_arr;
+std::vector<std::stack<float *>> float_values_arr;
+std::vector<std::stack<std::wstring *>> string_values_arr;
 
-std::vector<std::vector<int> > int_sizes, bool_sizes, float_sizes, string_sizes, char_sizes;
+std::vector<std::stack<std::vector<int>> > int_sizes, bool_sizes, float_sizes, string_sizes;
+std::vector<std::vector<std::vector<int> > > func_memory;
 
 std::stack<int> empty_int_stack;
 std::stack<bool> empty_bool_stack;
 std::stack<float> empty_float_stack;
 std::stack<std::wstring> empty_wstring_stack;
+std::stack<std::vector<int>> empty_size_stack;
+std::stack<int> function_stack;
+std::stack<int> funcpos_stack;
+
+CodeRunner cr;
 
 int push_value(TYPE type)
 {
+	int res = -1;
 	if (type.basic == TYPES::INT_ && type.depth == 0) {
-		int_values.push_back(empty_int_stack); return int_values.size() - 1;
+		int_values.push_back(empty_int_stack); res = int_values.size() - 1;
 	}
-	if (type.basic == TYPES::CHAR_ && type.depth == 0) {
-		int_values.push_back(empty_int_stack); return int_values.size() - 1;
+	else if (type.basic == TYPES::CHAR_ && type.depth == 0) {
+		int_values.push_back(empty_int_stack); res = int_values.size() - 1;
 	}
-	if (type.basic == TYPES::BOOL_ && type.depth == 0) {
-		bool_values.push_back(empty_bool_stack); return bool_values.size() - 1;
+	else if (type.basic == TYPES::BOOL_ && type.depth == 0) {
+		bool_values.push_back(empty_bool_stack); res = bool_values.size() - 1;
 	}
-	if (type.basic == TYPES::FLOAT_ && type.depth == 0) {
-		float_values.push_back(empty_float_stack); return float_values.size() - 1;
+	else if (type.basic == TYPES::FLOAT_ && type.depth == 0) {
+		float_values.push_back(empty_float_stack); res = float_values.size() - 1;
 	}
-	if (type.basic == TYPES::STRING_ && type.depth == 0) {
-		string_values.push_back(empty_wstring_stack); return string_values.size() - 1;
+	else if (type.basic == TYPES::STRING_ && type.depth == 0) {
+		string_values.push_back(empty_wstring_stack); res = string_values.size() - 1;
 	}
+	if (res != -1)
+	{
+		if (function_stack.size())
+			func_memory[function_stack.top()][type.basic-1].push_back(res);
+		return res;
+	}
+	int size = 1;
 	if (type.basic == TYPES::INT_ && type.depth == 1) {
-		int_values_arr.push_back({}); return int_values_arr.size() - 1;
+		std::stack<int*> st;
+		res = int_values_arr.size();
+		for (int part : int_sizes[res].top())
+			size *= part;
+		st.push(new int[size]);
+		int_values_arr.push_back(st);
 	}
-	if (type.basic == TYPES::CHAR_ && type.depth == 1) {
-		int_values_arr.push_back({}); return int_values_arr.size() - 1;
+	else if (type.basic == TYPES::CHAR_ && type.depth == 1) {
+		std::stack<int*> st;
+		res = int_values_arr.size();
+		for (int part : int_sizes[res].top())
+			size *= part;
+		st.push(new int[size]);
+		int_values_arr.push_back(st);
 	}
-	if (type.basic == TYPES::BOOL_ && type.depth == 1) {
-		bool_values_arr.push_back({}); return bool_values_arr.size() - 1;
+	else if (type.basic == TYPES::BOOL_ && type.depth == 1) {
+		std::stack<bool*> st;
+		res = bool_values_arr.size();
+		for (int part : int_sizes[res].top())
+			size *= part;
+		st.push(new bool[size]);
+		bool_values_arr.push_back(st);
 	}
-	if (type.basic == TYPES::FLOAT_ && type.depth == 1) {
-		float_values_arr.push_back({}); return float_values_arr.size() - 1;
+	else if (type.basic == TYPES::FLOAT_ && type.depth == 1) {
+		std::stack<float*> st;
+		res = float_values_arr.size();
+		for (int part : int_sizes[res].top())
+			size *= part;
+		st.push(new float[size]);
+		float_values_arr.push_back(st);
 	}
-	if (type.basic == TYPES::STRING_ && type.depth == 1) {
-		string_values_arr.push_back({}); return string_values_arr.size() - 1;
+	else if (type.basic == TYPES::STRING_ && type.depth == 1) {
+		std::stack<std::wstring*> st;
+		res = string_values_arr.size();
+		for (int part : int_sizes[res].top())
+			size *= part;
+		st.push(new std::wstring[size]);
+		string_values_arr.push_back(st);
 	}
-	return -1;
+	if (function_stack.size())
+		func_memory[function_stack.top()][4 + type.basic].push_back(res);
+	return res;
+}
+
+int push_func_memory()
+{
+	function_stack.push(func_memory.size());
+	std::vector<std::vector<int> > nv(10);
+	func_memory.push_back(nv);
+	return function_stack.top();
+}
+
+int pop_func_memory()
+{
+	int res = function_stack.top();
+	function_stack.pop();
+	return res;
 }
 
 void set_values_function(TID* tree)
 {
 	tree->push_value = push_value;
 
+	empty_int_stack.push(0);
+	empty_bool_stack.push(false);
+	empty_float_stack.push(0);
+	empty_wstring_stack.push(L"");
+	empty_size_stack.push({ 0 });
+
 	int_values.push_back(empty_int_stack);
 	bool_values.push_back(empty_bool_stack);
 	float_values.push_back(empty_float_stack);
 	string_values.push_back(empty_wstring_stack);
-	int_values_arr.push_back({});
-	bool_values_arr.push_back({});
-	float_values_arr.push_back({});
-	string_values_arr.push_back({});
-	int_sizes.push_back({ 0 });
-	bool_sizes.push_back({ 0 });
-	float_sizes.push_back({ 0 });
-	string_sizes.push_back({ 0 });
-}
+	int_values_arr.push_back(std::stack<int*>({ new int[0] }));
+	bool_values_arr.push_back(std::stack<bool*>({ new bool[0] }));
+	float_values_arr.push_back(std::stack<float*>({ new float[0] }));
+	string_values_arr.push_back(std::stack<std::wstring*>({ new std::wstring[0] }));
+	int_sizes.push_back(empty_size_stack);
+	bool_sizes.push_back(empty_size_stack);
+	float_sizes.push_back(empty_size_stack);
+	string_sizes.push_back(empty_size_stack);
 
-std::stack<lexem> execution_stack;
+	cr.int_values = &int_values;
+	cr.bool_values = &bool_values;
+	cr.float_values = &float_values;
+	cr.string_values = &string_values;
+	cr.int_values_arr = &int_values_arr;
+	cr.bool_values_arr = &bool_values_arr;
+	cr.float_values_arr = &float_values_arr;
+	cr.string_values_arr = &string_values_arr;
+	cr.int_sizes = &int_sizes;
+	cr.bool_sizes = &bool_sizes;
+	cr.float_sizes = &float_sizes;
+	cr.string_sizes = &string_sizes;
+}
 
 void setLocale(std::wistream &str)
 {
-	str.imbue(std::locale(str.getloc(), new std::codecvt_utf8<wchar_t>));
+	str.imbue(std::locale(str.getloc(), new std::codecvt<char32_t, wchar_t, std::mbstate_t>));
 }
 
 // Конфигуратор файлов. Берет из config.txt адреса файлов и присваивает их потокам. Если до какого-то файла не может достучаться кидает invalid_argument
@@ -328,177 +402,235 @@ void getLexemsUsingMatch (std::wstring text, std::vector<std::wregex>& regexes, 
 	}
 }
 
-std::wstring boolToLexString (bool b) {
-	if (b) {
-		return L"true";
+const char* runCode(std::vector<lexem> & polis)
+{
+	try {
+		int pos = 0; // текущая позиция
+		while (pos < polis.size()) {
+			//std::wcout << "p " << pos << ". { " << polis[pos].first << ", " << polis[pos].second << " }\n";
+			// если встретили адрес переменную или константу
+			if (polis[pos].first != LEX_OPERATION) {
+				cr.pushValue(polis[pos]);
+			}
+			else if (polis[pos].second == L"in")
+			{
+				std::wstring input;
+				std::wcin >> input;
+				cr.pushValue(input);
+			}
+			else if (polis[pos].second == L"out")
+			{
+				std::wcout << cr.getString();
+			}
+			else if (polis[pos].second == L"!!")
+			{
+				pos = cr.getInt() - 1;
+			}
+			else if (polis[pos].second == L"?!")
+			{
+				int new_pos = cr.getInt();
+				if (!cr.getBool())
+					pos = new_pos - 1;
+			}
+			else if (polis[pos].second == L"->")
+			{
+				int index = cr.getInt();
+				value arr = cr.getPointer();
+				int depth = arr.first.depth;
+				if (arr.first == LEX_STRING)
+				{
+					std::wstring str = std::any_cast<std::wstring>(arr.second);
+					if (index >= str.size())
+						throw std::runtime_error("Array's subscript out of range");
+					cr.pushValue(str[index]);
+				}
+				else
+				{
+					--arr.first.depth;
+					auto arr_t = std::any_cast<std::pair<int, int*>>(arr.second);
+					int size = 0, part = 1;
+					if (arr.first == INT_TYPE)
+					{
+						int sz1 = int_sizes[arr_t.first].top().size();
+						size = int_sizes[arr_t.first].top()[sz1 - depth];
+						for (int i = 0; i < size; ++i) {
+							part *= int_sizes[arr_t.first].top()[sz1 - i - 1];
+						}
+					}
+					else if (arr.first == BOOL_TYPE)
+					{
+						int sz1 = bool_sizes[arr_t.first].top().size();
+						size = bool_sizes[arr_t.first].top()[sz1 - depth];
+						for (int i = 0; i < size; ++i) {
+							part *= bool_sizes[arr_t.first].top()[sz1 - i - 1];
+						}
+					}
+					else if (arr.first == FLOAT_TYPE)
+					{
+						int sz1 = float_sizes[arr_t.first].top().size();
+						size = float_sizes[arr_t.first].top()[sz1 - depth];
+						for (int i = 0; i < size; ++i) {
+							part *= float_sizes[arr_t.first].top()[sz1 - i - 1];
+						}
+					}
+					else if (arr.first == STRING_TYPE)
+					{
+						int sz1 = string_sizes[arr_t.first].top().size();
+						size = string_sizes[arr_t.first].top()[sz1 - depth];
+						for (int i = 0; i < size; ++i) {
+							part *= string_sizes[arr_t.first].top()[sz1 - i - 1];
+						}
+					}
+					else if (arr.first == CHAR_TYPE)
+					{
+						int sz1 = int_sizes[arr_t.first].top().size();
+						size = int_sizes[arr_t.first].top()[sz1 - depth];
+						for (int i = 0; i < size; ++i) {
+							part *= int_sizes[arr_t.first].top()[sz1 - i - 1];
+						}
+					}
+					if (index >= size)
+						throw std::runtime_error("Array's subscript out of range");
+					arr_t.second += index * part;
+					arr.second = std::any(arr_t);
+					cr.pushValue(arr);
+				}
+			}
+			else if (polis[pos].second == L"push-stack")
+			{
+				funcpos_stack.push(pos + 2);
+				if (funcpos_stack.size() > MAX_STACK_SIZE)
+				{
+					throw std::runtime_error("Stack is overflow");
+				}
+			}
+			else if (polis[pos].second == L"pop-stack")
+			{
+				cr.pushValue(funcpos_stack.top());
+				funcpos_stack.pop();
+			}
+			else if (polis[pos].second == L"push-mem")
+			{
+				int index = cr.getInt();
+				for (int p : func_memory[index][0])
+					int_values[p].push(0);
+				for (int p : func_memory[index][1])
+					bool_values[p].push(0);
+				for (int p : func_memory[index][2])
+					float_values[p].push(0);
+				for (int p : func_memory[index][3])
+					string_values[p].push(L"");
+				for (int p : func_memory[index][4])
+					int_values[p].push(0);
+				for (int p : func_memory[index][5])
+					int_values_arr[p].push(nullptr);
+				for (int p : func_memory[index][6])
+					bool_values_arr[p].push(nullptr);
+				for (int p : func_memory[index][7])
+					float_values_arr[p].push(nullptr);
+				for (int p : func_memory[index][8])
+					string_values_arr[p].push(nullptr);
+				for (int p : func_memory[index][9])
+					int_values_arr[p].push(nullptr);
+			}
+			else if (polis[pos].second == L"pop-mem")
+			{
+				int index = cr.getInt();
+				for (int p : func_memory[index][0])
+					int_values[p].pop();
+				for (int p : func_memory[index][1])
+					bool_values[p].pop();
+				for (int p : func_memory[index][2])
+					float_values[p].pop();
+				for (int p : func_memory[index][3])
+					string_values[p].pop();
+				for (int p : func_memory[index][4])
+					int_values[p].pop();
+				for (int p : func_memory[index][5]) {
+					int_values_arr[p].pop();
+				}
+				for (int p : func_memory[index][6]) {
+					bool_values_arr[p].pop();
+					bool_sizes[p].pop();
+				}
+				for (int p : func_memory[index][7]) {
+					float_values_arr[p].pop();
+					float_sizes[p].pop();
+				}
+				for (int p : func_memory[index][8]) {
+					string_values_arr[p].pop();
+					string_sizes[p].pop();
+				}
+				for (int p : func_memory[index][9]) {
+					int_values_arr[p].pop();
+					int_sizes[p].pop();
+				}
+			}
+			else if (polis[pos].second == L"cast")
+			{
+				int typ = cr.getInt();
+				if (typ == LEX_INT)
+					cr.pushValue(cr.getInt());
+				else if (typ == LEX_BOOL)
+					cr.pushValue(cr.getBool());
+				else if (typ == LEX_FLOAT)
+					cr.pushValue(cr.getFloat());
+				else if (typ == LEX_STRING)
+					cr.pushValue(cr.getString());
+				else if (typ == LEX_CHAR)
+					cr.pushValue(cr.getChar());
+			}
+			else if (polis[pos].second == L"set-arrays")
+			{
+				int typ = cr.getInt();
+				int idc = cr.getInt();
+				std::wstringstream ids(cr.getString());
+
+				int depth = cr.getInt();
+				long long size = 1;
+				std::vector<int> sizes(depth), paths(idc);
+				for (int i = 0; i < idc; ++i) {
+					ids >> paths[i];
+				}
+				for (int i = 0; i < depth; ++i)
+				{
+					sizes[i] = cr.getInt();
+					size *= sizes[i];
+					if (size > MAX_SIZE)
+					{
+						throw std::runtime_error("Can't create an array. It is oversized");
+					}
+				}
+				for (int i = 0; i < idc; ++i)
+				{
+					if (typ == LEX_INT)
+						int_sizes[paths[i]].push(sizes);
+					else if (typ == LEX_BOOL)
+						bool_sizes[paths[i]].push(sizes);
+					else if (typ == LEX_FLOAT)
+						float_sizes[paths[i]].push(sizes);
+					else if (typ == LEX_STRING)
+						string_sizes[paths[i]].push(sizes);
+					else if (typ == LEX_CHAR)
+						int_sizes[paths[i]].push(sizes);
+				}
+			}
+			else if (polis[pos].second == L"forget")
+			{
+				cr.getValue();
+			}
+			else cr.runOperation(polis[pos].second);
+			++pos;
+		}
+		return "\nFinished without any mistakes! :)";
 	}
-	else {
-		return L"false";
+	catch (std::exception & e) {
+		return e.what();
 	}
 }
-
-lexem castToBool (lexem input) {
-	if (input.first == LEX_BOOL) {
-		return input;
-	}
-	if (input.first == LEX_INT) {
-		input.first = LEX_BOOL;
-		bool castedBool = std::stoi (input.second);
-		input.second = boolToLexString (castedBool);
-		return input;
-	}
-	if (input.first == LEX_FLOAT) {
-		input.first = LEX_BOOL;
-		bool castedBool = std::stod (input.second);
-		input.second = boolToLexString (castedBool);
-		return input;
-	}
-	if (input.first == LEX_CHAR) {
-		input.first = LEX_BOOL;
-		bool castedBool = std::stoi (input.second);
-		input.second = boolToLexString (castedBool);
-		return input;
-	}
-	if (input.first == LEX_STRING) {
-		input.first = LEX_INT;
-		bool castedBool = input.second.size ()-2;
-		input.second = boolToLexString (castedBool);
-		return input;
-	}
-	throw std::invalid_argument ("I don't know how to cast " + std::to_string(input.first) + " to bool");
-}
-
-lexem castToInt (lexem input) {
-	if (input.first == LEX_BOOL) {
-		input.first = LEX_INT;
-		if (input.second == L"true") {
-			input.second = L"1";
-		}
-		else {
-			input.second = L"0";
-		}
-	}
-	if (input.first == LEX_INT) {
-		return input;
-	}
-	if (input.first == LEX_FLOAT) {
-		input.first = LEX_INT;
-		int castedInt = std::stod (input.second);
-		input.second = std::to_wstring (castedInt);
-		return input;
-	}
-	if (input.first == LEX_CHAR) {
-		input.first = LEX_INT;
-		int castedInt = std::stoi (input.second);
-		input.second = std::to_wstring (castedInt);
-		return input;
-	}
-	if (input.first == LEX_STRING) {
-		input.first = LEX_INT;
-		std::wstring stringToCast = input.second.substr (1, input.second.size () - 2);
-		int castedInt = std::stoi(stringToCast);
-		input.second = std::to_wstring (castedInt);
-		return input;
-	}
-	throw std::invalid_argument ("I don't know how to cast " + std::to_string (input.first) + " to int");
-}
-
-lexem castToFloat (lexem input) {
-	if (input.first == LEX_BOOL) {
-		input.first = LEX_FLOAT;
-		if (input.second == L"true") {
-			input.second = L"1,0";
-		}
-		else {
-			input.second = L"0,0";
-		}
-	}
-	if (input.first == LEX_INT) {
-		input.first = LEX_FLOAT;
-		double castedDouble = std::stod (input.second);
-		input.second = std::to_wstring (castedDouble);
-		return input;
-	}
-	if (input.first == LEX_FLOAT) {
-		return input;
-	}
-	if (input.first == LEX_CHAR) {
-		input.first = LEX_FLOAT;
-		double castedDouble = std::stod (input.second);
-		input.second = std::to_wstring (castedDouble);
-		return input;
-	}
-	if (input.first == LEX_STRING) {
-		input.first = LEX_FLOAT;
-		std::wstring stringToCast = input.second.substr (1, input.second.size () - 2);
-		double castedDouble = std::stod (stringToCast);
-		input.second = std::to_wstring (castedDouble);
-		return input;
-	}
-	throw std::invalid_argument ("I don't know how to cast " + std::to_string (input.first) + " to float");
-}
-
-lexem castToString (lexem input) {
-	input.first = LEX_STRING;
-	input.second += L"\"";
-	input.second = L"\"" + input.second;
-	return input; // оооо дааааа самый офигенный каст из всех )))
-}
-
-lexem castToChar (lexem input) {
-	if (input.first == LEX_BOOL) {
-		input.first = LEX_CHAR;
-		if (input.second == L"true") {
-			char castedChar = 1;
-			input.second = L"'";
-			input.second += castedChar;
-			input.second += L"'";
-		}
-		else {
-			char castedChar = 0;
-			input.second = L"'";
-			input.second += castedChar;
-			input.second += L"'";
-		}
-	}
-	if (input.first == LEX_INT) {
-		input.first = LEX_CHAR;
-		char castedChar = std::stoi (input.second);
-		input.second = L"'";
-		input.second += castedChar;
-		input.second += L"'";
-		return input;
-	}
-	if (input.first == LEX_FLOAT) {
-		input.first = LEX_CHAR;
-		char castedChar = int(std::stod (input.second));
-		input.second = L"'";
-		input.second += castedChar;
-		input.second += L"'";
-		return input;
-	}
-	if (input.first == LEX_CHAR) {
-		return input;
-	}
-	if (input.first == LEX_STRING) {
-		input.first = LEX_CHAR;
-		std::wstring stringToCast = input.second.substr (1, input.second.size () - 2);
-		char castedChar = stringToCast[0];
-		input.second = L"'";
-		input.second += castedChar;
-		input.second += L"'";
-		return input;
-	}
-	throw std::invalid_argument ("I don't know how to cast " + std::to_string (input.first) + " to char");
-}
-
 
 int main()
 {
-	empty_int_stack.push (0);
-	empty_bool_stack.push (false);
-	empty_float_stack.push (0);
-	empty_wstring_stack.push (L"");
 	setlocale(LC_ALL, "Russian");
 	std::wcout.imbue(rusLoc);
 	std::wcin.imbue(rusLoc);
@@ -509,34 +641,33 @@ int main()
 	std::vector<std::wregex> regexes;
 	std::wstring text;
 	std::wofstream output;
-	/*std::wofstream kpt("input.txt");
-	kpt << "kek";
-	kpt.close();*/
 	output.imbue(rusLoc);
 	if (!initFiles(output, text, regexes))
 		return 0;
-	std::wcout << "Lexical analyzing..." << std::endl;
+	output << "Lexical analyzing..." << std::endl;
 	getLexemsUsingMatch(text, regexes, lexems);
 	output << "Successfully created:" << std::endl;
 	for (auto p : lexems)
 	{
 		output << "{" << p.first << ", \"" << p.second << "\"}\n";
 	}
-	std::wcout << "Lexical analyzing completed!" << std::endl;
-	std::cout << "Generated " << lexems.size() << " lexems:\n";
+	output << "Lexical analyzing completed!" << std::endl;
+	output << "Generated " << lexems.size() << " lexems:\n";
 	for (int i = 0; i < lexems.size(); ++i)
 	{
-		std::wcout << i+1 << ". {" << lexems[i].first << ", \"" << lexems[i].second << "\"}\n";
+		output << i+1 << ". {" << lexems[i].first << ", \"" << lexems[i].second << "\"}\n";
 		// TODO: потом перенести это в лексический анализатор
 		if (lexems[i].first == 1 && serviceDict.find(lexems[i].second) != serviceDict.end())
 			lexems[i].second = serviceDict[lexems[i].second];
 	}
 	LexemChecker mainChecker = LexemChecker(lexems);
 	set_values_function(mainChecker.get_tree());
+	mainChecker.push_func_memory = push_func_memory;
+	mainChecker.pop_func_memory = pop_func_memory;
 	mainChecker.checkProgram();
 	std::vector<lexem> &polis = mainChecker.get_polis();
-	std::cout << "Syntax: OK \n";
-	std::cout << "Generated " << polis.size() << " polis commands: \n";
+	output << "Syntax: OK \n";
+	output << "Generated " << polis.size() << " polis commands: \n";
 	for (int i = 0; i < polis.size(); ++i)
 	{
 		std::wstring typis = L"";
@@ -557,125 +688,7 @@ int main()
 			typis += L"CHAR";
 		if (type == LEX_OPERATION)
 			typis += L"OPERATION";
-		std::wcout << i << ". {" << typis << ", \"" << polis[i].second << "\"}\n";
+		output << i << ". {" << typis << ", \"" << polis[i].second << "\"}\n";
 	}
-	try {
-		int pos = 0; // текущая позиция
-		while (pos < polis.size ()) {
-			// если встретили адрес переменную или константу
-			if (polis[pos].first != LEX_OPERATION) {
-				// пихаем её в с тек
-				execution_stack.push (polis[pos]);
-				// и спокойно шуруем дальше
-				++pos; continue;
-			}
-			// иначе мы словили оператор и надо его обработать
-			// если мы словили !! то 
-			if (polis[pos].second == L"!!") {
-				// меняем pos на последнее значение в стеке
-				pos = std::stoi (execution_stack.top ().second);
-				// удаляем лишнее из стека
-				execution_stack.pop ();
-				// и идем дальше
-				continue;
-			}
-			// если мы словили ?! то
-			if (polis[pos].second == L"?!") {
-				// берем цифирь из стека
-				int posToJump = std::stoi (execution_stack.top ().second); execution_stack.pop ();
-				std::wstring boolToAnalyze;
-				// если у нас наверху не адрес
-				if (!(execution_stack.top ().first & LEX_ADRESS)) {
-					// конвертируем верхушку стека в bool
-					lexem boolLexem = castToBool (execution_stack.top ());
-					execution_stack.pop ();
-					boolToAnalyze = boolLexem.second;
-				}
-				else {
-					lexem boolLexem = execution_stack.top (); execution_stack.pop ();
-					boolLexem.first -= LEX_ADRESS;
-					if (boolLexem.first == LEX_INT) {
-						boolLexem.second = std::to_wstring(int_values[std::stoi (boolLexem.second)].top ());
-					} else if (boolLexem.first == LEX_BOOL) {
-						boolLexem.second = boolToLexString (bool_values[std::stoi (boolLexem.second)].top ());
-					}
-					else if (boolLexem.first == LEX_FLOAT) {
-						boolLexem.second = std::to_wstring (float_values[std::stoi (boolLexem.second)].top ());
-					}
-					else if (boolLexem.first == LEX_STRING) {
-						boolLexem.second = string_values[std::stoi (boolLexem.second)].top ();
-					}
-					else if (boolLexem.first == LEX_CHAR) {
-						boolLexem.second = L"'" + char(int_values[std::stoi (boolLexem.second)].top ());
-						boolLexem.second += L"'";
-					}
-					boolLexem = castToBool (boolLexem);
-				}
-				// если булл = false то идем меняем pos на цифирь
-				if (boolToAnalyze == L"false") {
-					pos = posToJump;
-					continue;
-				}
-				else {
-					++pos; continue;
-				}
-			}
-			// если мы словили out то выводим последнюю хрень из стека
-			if (polis[pos].second == L"out") {
-				lexem lexemForOutput = execution_stack.top (); execution_stack.pop ();
-				std::wstring stringForOutput = lexemForOutput.second;
-				if (lexemForOutput.first == LEX_STRING || lexemForOutput.first == LEX_CHAR) {
-					stringForOutput = stringForOutput.substr (1, stringForOutput.size () - 2);
-				}
-				std::wcout << stringForOutput;
-				++pos;
-				continue;
-			}
-			// если мы словили in то надо считать и запихать в стек строку
-			if (polis[pos].second == L"in") {
-				std::wstring enteredString;
-				std::wcin >> enteredString;
-				lexem newLexem;
-				newLexem.first = LEX_STRING;
-				newLexem.second = enteredString;
-				execution_stack.push (newLexem);
-				++pos; continue;
-			}
-			// если мы словили = то присваиваем
-			if (polis[pos].second == L"=") {
-				lexem whatToAssign = execution_stack.top (); execution_stack.pop ();
-				lexem whereToAssign = execution_stack.top (); execution_stack.pop ();
-				whereToAssign.first -= LEX_ADRESS;
-				if (whereToAssign.first == LEX_INT) {
-
-				}
-			}
-			// если мы словили cast то берем во что кастить, что кастить, кастим и пихаем в стек
-			if (polis[pos].second == L"cast") {
-				lexem howToCast = execution_stack.top (); execution_stack.pop ();
-				lexem whatToCast = execution_stack.top (); execution_stack.pop ();
-				if (howToCast.second == L"1") {
-					whatToCast = castToInt (whatToCast);
-				} else if (howToCast.second == L"2") {
-					whatToCast = castToBool (whatToCast);
-				} else if (howToCast.second == L"3") {
-					whatToCast = castToFloat (whatToCast);
-				}
-				else if (howToCast.second == L"4") {
-					whatToCast = castToString (whatToCast);
-				}
-				else if (howToCast.second == L"5") {
-					whatToCast = castToChar (whatToCast);
-				}
-				execution_stack.push (whatToCast);
-				++pos; continue;
-			}
-			//TODO вот эта херь нужна только для отладки чтоб прога не висла, потом её надо убрать
-			pos++;
-		}
-		std::cout << std::endl << "Finished without any mistakes! :)";
-	}
-	catch (std::exception& e) {
-		std::cout << e.what () << std::endl;
-	}
+	std::wcout << runCode(polis) << '\n';
 }

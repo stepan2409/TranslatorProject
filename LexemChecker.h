@@ -12,6 +12,9 @@ public:
 	bool checkProgram(); // <ןנמדנאללא>
 	TID* get_tree();
 	std::vector<lexem>& get_polis();
+	int (*push_func_memory)();
+	int (*pop_func_memory)();
+
 
 private:
 
@@ -98,7 +101,7 @@ private:
 
 	void pushBlock();
 	void popBlock();
-	void pushId(std::wstring name, TYPE type);
+	void pushId(std::wstring name, TYPE type); 
 
 	void pushFunctionDefault(TYPE type)
 	{
@@ -136,6 +139,7 @@ private:
 	std::stack<lexem> sign_stack;
 
 	std::map<std::wstring, int> label_map;
+	std::map<std::wstring, std::vector<int> > template_calls;
 	std::stack<std::pair<int, std::wstring> > goto_stack;
 	std::stack<int> break_stack, continue_stack;
 	int p = 0;

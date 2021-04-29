@@ -24,6 +24,9 @@
     <ClCompile Include="TID.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
+    <ClCompile Include="CodeRunner.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="config.txt" />
@@ -37,6 +40,9 @@
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
     <ClInclude Include="TID.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="CodeRunner.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
   </ItemGroup>
