@@ -30,27 +30,27 @@ void CodeRunner::pushValue(lexem& val)
 			if (basic == LEX_INT)
 			{
 				type.depth = (*int_sizes)[adress].top().size();
-				item = std::any(&(*int_values_arr)[adress].top());
+				item = std::any(std::make_pair(adress, (*int_values_arr)[adress].top()));
 			}
 			else if (basic == LEX_BOOL)
 			{
 				type.depth = (*bool_sizes)[adress].top().size();
-				item = std::any(&(*bool_values_arr)[adress].top());
+				item = std::any(std::make_pair(adress, (*bool_values_arr)[adress].top()));
 			}
 			else if (basic == LEX_FLOAT)
 			{
 				type.depth = (*float_sizes)[adress].top().size();
-				item = std::any(&(*float_values_arr)[adress].top());
+				item = std::any(std::make_pair(adress, (*float_values_arr)[adress].top()));
 			}
 			else if (basic == LEX_STRING)
 			{
 				type.depth = (*string_sizes)[adress].top().size();
-				item = std::any(&(*string_values_arr)[adress].top());
+				item = std::any(std::make_pair(adress, (*string_values_arr)[adress].top()));
 			}
 			else if (basic == LEX_CHAR)
 			{
 				type.depth = (*int_sizes)[adress].top().size();
-				item = std::any(&(*int_values_arr)[adress].top());
+				item = std::any(std::make_pair(adress, (*int_values_arr)[adress].top()));
 			}
 		}
 		else if (basic == LEX_INT)
@@ -137,7 +137,7 @@ void CodeRunner::runEquation(std::wstring op)
 	{
 		std::wstring str = std::any_cast<std::wstring>(fr.second);
 		int chsz = getSize(to);
-		int* mem = std::any_cast<int*>(to.second);
+		int* mem = std::any_cast<std::pair<int, int*> >(to.second).second;
 		for (int i = 0; i < chsz; ++i, ++mem)
 		{
 			if (i < str.size())
@@ -151,7 +151,7 @@ void CodeRunner::runEquation(std::wstring op)
 	{
 		std::wstring str = L"";
 		int chsz = getSize(fr);
-		int* mem = std::any_cast<int*>(fr.second);
+		int* mem = std::any_cast<std::pair<int, int*>>(fr.second).second;
 		for (int i = 0; i < std::min((int)str.size(), chsz); ++i, ++mem)
 		{
 			str += (*mem);
@@ -170,8 +170,8 @@ void CodeRunner::runEquation(std::wstring op)
 		}
 		if (to.first.basic == LEX_INT || to.first.basic == LEX_CHAR)
 		{
-			int* to_mem = std::any_cast<int*>(to.second);
-			int* fr_mem = std::any_cast<int*>(fr.second);
+			int* to_mem = std::any_cast<std::pair<int, int*>>(to.second).second;
+			int* fr_mem = std::any_cast<std::pair<int, int*>>(fr.second).second;
 			for (int i = 0; i < to_sz; ++i, ++to_mem, ++fr_mem)
 			{
 				(*to_mem) = (*fr_mem);
@@ -179,8 +179,8 @@ void CodeRunner::runEquation(std::wstring op)
 		}
 		else if (to.first.basic == LEX_BOOL)
 		{
-			bool* to_mem = std::any_cast<bool*>(to.second);
-			bool* fr_mem = std::any_cast<bool*>(fr.second);
+			bool* to_mem = std::any_cast<std::pair<int, bool*>>(to.second).second;
+			bool* fr_mem = std::any_cast<std::pair<int, bool*>>(fr.second).second;
 			for (int i = 0; i < to_sz; ++i, ++to_mem, ++fr_mem)
 			{
 				(*to_mem) = (*fr_mem);
@@ -188,8 +188,8 @@ void CodeRunner::runEquation(std::wstring op)
 		}
 		else if (to.first.basic == LEX_FLOAT)
 		{
-			float* to_mem = std::any_cast<float*>(to.second);
-			float* fr_mem = std::any_cast<float*>(fr.second);
+			float* to_mem = std::any_cast<std::pair<int, float*>>(to.second).second;
+			float* fr_mem = std::any_cast<std::pair<int, float*>>(fr.second).second;
 			for (int i = 0; i < to_sz; ++i, ++to_mem, ++fr_mem)
 			{
 				(*to_mem) = (*fr_mem);
@@ -197,8 +197,8 @@ void CodeRunner::runEquation(std::wstring op)
 		}
 		else if (to.first.basic == LEX_STRING)
 		{
-			std::wstring* to_mem = std::any_cast<std::wstring*>(to.second);
-			std::wstring* fr_mem = std::any_cast<std::wstring*>(fr.second);
+			std::wstring* to_mem = std::any_cast<std::pair<int, std::wstring*>>(to.second).second;
+			std::wstring* fr_mem = std::any_cast<std::pair<int, std::wstring*>>(fr.second).second;
 			for (int i = 0; i < to_sz; ++i, ++to_mem, ++fr_mem)
 			{
 				(*to_mem) = (*fr_mem);
@@ -245,19 +245,26 @@ void CodeRunner::runEquation(std::wstring op)
 
 void CodeRunner::runMemOperation(std::wstring op)
 {
-	value v2 = getPointer();
-	value v1 = getPointer();
-	pushValue(v1);
-	if (op[1] == L'=')
+	value v1, v2; 
+	if (op.size() == 3)
 	{
-		pushValue(v2);
-		pushValue(v1);
-		lexem sign = { LEX_OPERATION, L"" + op[0] };
-		pushValue(sign);
+		v1 = getPointer();
+		pushValue(1);
+		v2 = getValue();
 	}
-	lexem signeq = { LEX_OPERATION, L"=" };
-	pushValue(signeq);
-
+	else v2 = getPointer(), v1 = getPointer();
+	if (op == L"a++" || op == L"a--")
+	{
+		pushValue(v1);
+		pushValue(getValue());
+	}
+	pushValue(v1);
+	pushValue(v1);
+	pushValue(v2);
+	runOperation(op.substr(0, 1));
+	runEquation(L"=");
+	if (op[0] == L'a')
+		getValue();
 }
 
 void CodeRunner::runMatOperation(std::wstring op)
@@ -633,7 +640,7 @@ value CodeRunner::getValue()
 value CodeRunner::getPointer()
 {
 	if (runtime_stack.top().first.is_adress == 0)
-		return NO_VALUE;
+		return getValue();
 	value res = runtime_stack.top();
 	runtime_stack.pop();
 	return res;
@@ -656,8 +663,7 @@ int CodeRunner::getInt()
 		int v = _wtoi(str.c_str());
 		if (v == 0)
 		{
-			//TODO: Parse exception
-			return str.size();
+			return 0;
 		}
 		return v;
 	}
@@ -704,8 +710,7 @@ float CodeRunner::getFloat()
 		float v = _wtof(str.c_str());
 		if (v == 0)
 		{
-			//TODO: Parse exception
-			return str.size();
+			return 0;
 		}
 		return v;
 	}
@@ -729,6 +734,16 @@ std::wstring CodeRunner::getString()
 		int ch = std::any_cast<int>(val.second);
 		return std::wstring(1, wchar_t(ch));
 	}
+	if (val.first.basic == LEX_CHAR && val.first.depth == 1)
+	{
+		int chsz = getSize(val);
+		int* ch = std::any_cast<std::pair<int, int*>>(val.second).second;
+		std::wstring res = L"";
+		for (int i = 0; i < chsz; ++i, ++ch) {
+			res += wchar_t(*ch);
+		}
+		return res;
+	}
 }
 
 wchar_t CodeRunner::getChar()
@@ -751,6 +766,12 @@ wchar_t CodeRunner::getChar()
 		return std::any_cast<int>(val.second);
 }
 
+int CodeRunner::getSize(value& arr)
+{
+	int sz;
+	return getSize(arr, sz);
+}
+
 bool CodeRunner::isIn(std::wstring op, std::vector<const wchar_t*>& ops)
 {
 	for (auto t : ops)
@@ -761,52 +782,56 @@ bool CodeRunner::isIn(std::wstring op, std::vector<const wchar_t*>& ops)
 	return 0;
 }
 
-int CodeRunner::getSize(value& arr)
+int CodeRunner::getSize(value& arr, int & size)
 {
 	if (arr.first == STRING_TYPE)
 	{
 		std::wstring val = std::any_cast<std::wstring>(arr.second);
 		return val.size();
 	}
-	auto arr_t = std::any_cast<std::pair<int, int*>>(arr.second);
-	int size = 0, part = 1;
-	if (arr.first == INT_TYPE)
+	int part = 1;
+	if (arr.first.basic == LEX_INT)
 	{
+		auto arr_t = std::any_cast<std::pair<int, int*>>(arr.second);
 		int sz1 = (*int_sizes)[arr_t.first].top().size();
 		size = (*int_sizes)[arr_t.first].top()[sz1 - arr.first.depth];
-		for (int i = 0; i < size; ++i) {
+		for (int i = 0; i < arr.first.depth; ++i) {
 			part *= (*int_sizes)[arr_t.first].top()[sz1 - i - 1];
 		}
 	}
-	else if (arr.first == BOOL_TYPE)
+	else if (arr.first.basic == LEX_BOOL)
 	{
+		auto arr_t = std::any_cast<std::pair<int, bool>>(arr.second);
 		int sz1 = (*bool_sizes)[arr_t.first].top().size();
 		size = (*bool_sizes)[arr_t.first].top()[sz1 - arr.first.depth];
-		for (int i = 0; i < size; ++i) {
+		for (int i = 0; i < arr.first.depth; ++i) {
 			part *= (*bool_sizes)[arr_t.first].top()[sz1 - i - 1];
 		}
 	}
-	else if (arr.first == FLOAT_TYPE)
+	else if (arr.first.basic == LEX_FLOAT)
 	{
+		auto arr_t = std::any_cast<std::pair<int, float*>>(arr.second);
 		int sz1 = (*float_sizes)[arr_t.first].top().size();
 		size = (*float_sizes)[arr_t.first].top()[sz1 - arr.first.depth];
-		for (int i = 0; i < size; ++i) {
+		for (int i = 0; i < arr.first.depth; ++i) {
 			part *= (*float_sizes)[arr_t.first].top()[sz1 - i - 1];
 		}
 	}
-	else if (arr.first == STRING_TYPE)
+	else if (arr.first.basic == LEX_STRING)
 	{
+		auto arr_t = std::any_cast<std::pair<int, std::wstring*>>(arr.second);
 		int sz1 = (*string_sizes)[arr_t.first].top().size();
 		size = (*string_sizes)[arr_t.first].top()[sz1 - arr.first.depth];
-		for (int i = 0; i < size; ++i) {
+		for (int i = 0; i < arr.first.depth; ++i) {
 			part *= (*string_sizes)[arr_t.first].top()[sz1 - i - 1];
 		}
 	}
-	else if (arr.first == CHAR_TYPE)
+	else if (arr.first.basic == LEX_CHAR)
 	{
+		auto arr_t = std::any_cast<std::pair<int, int*>>(arr.second);
 		int sz1 = (*int_sizes)[arr_t.first].top().size();
 		size = (*int_sizes)[arr_t.first].top()[sz1 - arr.first.depth];
-		for (int i = 0; i < size; ++i) {
+		for (int i = 0; i < arr.first.depth; ++i) {
 			part *= (*int_sizes)[arr_t.first].top()[sz1 - i - 1];
 		}
 	}

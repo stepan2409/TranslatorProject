@@ -14,6 +14,7 @@ public:
 	std::vector<lexem>& get_polis();
 	int (*push_func_memory)();
 	int (*pop_func_memory)();
+	void (*runException)(int, std::wstring, std::wstring);
 
 
 private:
@@ -130,7 +131,7 @@ private:
 	TYPE popType(bool pop = 1);
 	lexem popSign(bool pop = 1);
 
-	void runException(std::wstring reason);
+	//void runException(std::wstring reason);
 
 	std::vector<lexem> term_, polis_;
 	TID* tid_tree_;

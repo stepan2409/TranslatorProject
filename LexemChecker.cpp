@@ -19,18 +19,26 @@ LexemChecker::~LexemChecker()
 
 bool LexemChecker::checkProgram() // <программа>
 {
+	tid_tree_->set_return_type(VOID_TYPE);
+	polis_.push_back({ LEX_INT, std::to_wstring(push_func_memory()) });
+	polis_.push_back({ LEX_OPERATION, L"push-mem" });
 	checkOperators();
 	if (p != term_.size())
-		runException(L"Expected operator");
+		runException(p, L"Expected operator", L"Хотелось оператор");
 	popBlock();
+	polis_.push_back({ LEX_INT, std::to_wstring(pop_func_memory()) });
+	polis_.push_back({ LEX_OPERATION, L"pop-mem" });
 	if (break_stack.size() > 0)
-		runException(L"Operator 'break' must be used in cycle");
+		runException(p, L"Operator 'break' must be used in cycle", L"Оператор 'break' вне цикла? Ясно");
 	if (continue_stack.size() > 0)
-		runException(L"Operator 'continue' must be used in cycle");
+		runException(p, L"Operator 'continue' must be used in cycle", L"Оператор 'continue' вне цикла? Ясно");
 	while (goto_stack.size())
 	{
 		if (label_map.find(goto_stack.top().second) == label_map.end())
-			runException(L"Label '" + goto_stack.top().second + L"' must be defined");
+			runException(p, 
+				L"Label '" + goto_stack.top().second + L"' must be defined",
+				L"Метка '" + goto_stack.top().second + L"' должна быть установлена"
+			);
 		int code_line = label_map[goto_stack.top().second];
 		polis_[goto_stack.top().first].second = std::to_wstring(code_line);
 		goto_stack.pop();
@@ -52,7 +60,7 @@ bool LexemChecker::checkBlock() // <блок>
 		pushBlock();
 		checkOperators();
 		if (!match(7, L"}"))
-			runException(L"Expected ending bracket");
+			runException(p, L"Expected ending bracket", L"Тут могла быть ещё скобка");
 		popBlock();
 		return 1;
 	}
@@ -62,7 +70,7 @@ bool LexemChecker::checkUnsigned() // <беззнак>
 {
 	if (isEnd()) return 0;
 	if (type(p) == 0)
-		runException(L"Unexpected symbol");
+		runException(p, L"Unexpected symbol", L"Чё за " + value(p) + L"? Непонятно");
 	if (type(p) != 3)
 		return 0;
 	if (value(p)[0] <= '9' && value(p)[0] >= '0')
@@ -148,7 +156,10 @@ bool LexemChecker::checkPointer() // <указатель>
 	{
 		std::wstring nam = popName();
 		if (!checkKnown(nam))
-			runException(L"Unknown identifier '" + nam + L"'");
+			runException(p, 
+				L"Unknown identifier '" + nam + L"'",
+				L"Неизвестный науке идентификатор '" + nam + L"'"
+			);
 
 		TYPE typ = tid_tree_->get_type(nam);
 		int arg_count = checkFuctionCall();
@@ -157,12 +168,12 @@ bool LexemChecker::checkPointer() // <указатель>
 			if (arg_count == -1)
 				arg_count = 0;
 			if (!tid_tree_->is_function(nam))
-				runException(L"Identifier isn't a function");
+				runException(p, L"Identifier isn't a function", L"Увы, идентификатор не похож на функцию");
 			std::vector<TYPE> * args = tid_tree_->get_arguments(nam);
 			if (args == nullptr)
-				runException(L"We have a bug in checkPointer");
+				runException(p, L"We have a bug in checkPointer", L"Ой, а это баг");
 			if (arg_count < args->size())
-				runException(L"Too few arguments to function");
+				runException(p, L"Too few arguments to function", L"Нужно больше аргументов! ._");
 			bool too_args = arg_count > args->size();
 			while (arg_count > args->size())
 			{
@@ -175,7 +186,7 @@ bool LexemChecker::checkPointer() // <указатель>
 				popType();
 			}
 			if (too_args)
-				runException(L"Too many arguments in function");
+				runException(p, L"Too many arguments in function", L"Нужно меньше аргументов! ._");
 			int code_line = tid_tree_->get_code(nam);
 			if (code_line == -1)
 			{
@@ -188,7 +199,7 @@ bool LexemChecker::checkPointer() // <указатель>
 		else
 		{
 			if (tid_tree_->is_function(nam))
-				runException(L"Required function call");
+				runException(p, L"Required function call", L"Нужно вызвать эту функцию! ._");
 			polis_.push_back(tid_tree_->get_adress(nam));
 		}
 		while (checkShift())
@@ -199,7 +210,7 @@ bool LexemChecker::checkPointer() // <указатель>
 				continue;
 			}
 			if (typ.depth == 0)
-				runException(L"Invalid type for array subscript");
+				runException(p, L"Invalid type for array subscript", L"Это плохой пример массива");
 			--typ.depth;
 		}
 
@@ -207,7 +218,7 @@ bool LexemChecker::checkPointer() // <указатель>
 		{
 			if (checkPointer())
 				return 1;
-			runException(L"Invalid variable path\n");
+			runException(p, L"Invalid variable path\n");
 		}*/
 		type_stack.push(typ);
 		return 1;
@@ -234,7 +245,7 @@ bool LexemChecker::checkNames() // <имена>
 		{
 			if (checkNames())
 				return 1;
-			runException(L"Invalid identifier");
+			runException(p, L"Invalid identifier", L"Слишком некрасивое имя");
 		}
 		return 1;
 	}
@@ -262,7 +273,7 @@ bool LexemChecker::checkType() // <тип>
 	if (array_depth > 0)
 	{
 		if (typ == TYPES::VOID_)
-			runException(L"Type 'void' mustn't be in array");
+			runException(p, L"Type 'void' mustn't be in array", L"Тип 'void' недостоин быть элементом массива");
 		polis_.push_back({ LEX_INT, std::to_wstring(array_depth) });
 	}
 	type_stack.push(TYPE(typ, array_depth));
@@ -284,15 +295,15 @@ bool LexemChecker::checkShift(bool after_type) // <сдвиг> если after_type = 1, т
 				return 1;
 			}
 		}
-		runException(L"Incorrect Array's index");
+		runException(p, L"Incorrect Array's index", L"Неверный индекс массива(банально, не правда ли?)");
 	}
 	return 0;
 }
 
 bool LexemChecker::checkSign1() // <знак 1> 
 {
-	return match(6, L"=");/* || match(6, L"+=") || match(6, L"-=") || match(6, L"*=")
-		|| match(6, L"/=") || match(6, L"|=") || match(6, L"&=");*/
+	return match(6, L"=") || match(6, L"+=") || match(6, L"-=") || match(6, L"*=")
+		|| match(6, L"/=") || match(6, L"|=") || match(6, L"&=");
 }
 bool LexemChecker::checkSign2() // <знак 2> 
 {
@@ -355,11 +366,11 @@ bool LexemChecker::checkSign14() // <знак 14>
 }
 bool LexemChecker::checkSign15() // <знак 15> 
 {
-	return 0; /* match(6, L"++") || match(6, L"--");*/
+	return match(6, L"++") || match(6, L"--");
 }
 bool LexemChecker::checkSign16() // <знак 16> 
 {
-	return 0; /*match(6, L"++") || match(6, L"--");*/
+	return match(6, L"++") || match(6, L"--");
 }
 bool LexemChecker::checkExpression() // <выражение> 
 {
@@ -368,11 +379,11 @@ bool LexemChecker::checkExpression() // <выражение>
 		while (checkSign1())
 		{
 			if (!checkExpression())
-				runException(L"Expected value in expression");
+				runException(p, L"Expected value in expression", L"Хочу операнд в выражения");
 			TYPE type2 = popType();
 			TYPE type1 = popType();
 			if (!type1.is_adress)
-				runException(L"Left value required as left operand of assignment");
+				runException(p, L"Left value required as left operand of assignment", L"Хей! Хочу изменяемое левостороннее значение");
 			type2.is_adress = 0;
 			tryCast(type1, type2);
 			polis_.push_back(popSign());
@@ -388,15 +399,15 @@ bool LexemChecker::checkExp2() // <выр 2>
 		while (checkSign2())
 		{
 			if (!checkExp3())
-				runException(L"Expected value in expression");
+				runException(p, L"Expected value in expression", L"Хочу операнд в выражения");
 			TYPE type2 = popType();
 			TYPE type1 = popType();
 			type1.is_adress = 0;
 			type2.is_adress = 0;
 			if (type1.depth > 0 || type2.depth > 0)
-				runException(L"Incompatible types in expression");
+				runException(p, L"Incompatible types in expression", L"Эти типы несовместимы в выражении");
 			if (type1 == VOID_TYPE || type2 == VOID_TYPE)
-				runException(L"Type 'void' mustn't be in expression");
+				runException(p, L"Type 'void' mustn't be in expression", L"Тип 'void' недостоин использоваться в выражении");
 			type_stack.push(BOOL_TYPE);
 			polis_.push_back(popSign());
 		}
@@ -411,15 +422,15 @@ bool LexemChecker::checkExp3() // <выр 3>
 		while (checkSign3())
 		{
 			if (!checkExp4())
-				runException(L"Expected value in expression");
+				runException(p, L"Expected value in expression", L"Хочу операнд в выражения");
 			TYPE type2 = popType();
 			TYPE type1 = popType();
 			type1.is_adress = 0;
 			type2.is_adress = 0;
 			if (type1.depth > 0 || type2.depth > 0)
-				runException(L"Incompatible types in expression");
+				runException(p, L"Incompatible types in expression", L"Эти типы несовместимы в выражении");
 			if (type1 == VOID_TYPE || type2 == VOID_TYPE)
-				runException(L"Type 'void' mustn't be in expression");
+				runException(p, L"Type 'void' mustn't be in expression", L"Тип 'void' недостоин использоваться в выражении");
 			type_stack.push(BOOL_TYPE);
 			polis_.push_back(popSign());
 		}
@@ -434,20 +445,20 @@ bool LexemChecker::checkExp4() // <выр 4>
 		while (checkSign4())
 		{
 			if (!checkExp5())
-				runException(L"Expected value in expression");
+				runException(p, L"Expected value in expression", L"Хочу операнд в выражения");
 			TYPE type2 = popType();
 			TYPE type1 = popType();
 			type1.is_adress = 0;
 			type2.is_adress = 0;
 			if (type1.depth > 0 || type2.depth > 0)
-				runException(L"Incompatible types in expression");
+				runException(p, L"Incompatible types in expression", L"Эти типы несовместимы в выражении");
 			TYPE exp_type = BOOL_TYPE;
 			if (type1 == VOID_TYPE || type2 == VOID_TYPE)
-				runException(L"Type 'void' mustn't be in expression");
+				runException(p, L"Type 'void' mustn't be in expression", L"Тип 'void' недостоин использоваться в выражении");
 			if (type1 == FLOAT_TYPE || type1 == STRING_TYPE)
-				runException(L"Incompatible types in expression");
+				runException(p, L"Incompatible types in expression", L"Эти типы несовместимы в выражении");
 			if (type2 == FLOAT_TYPE || type2 == STRING_TYPE)
-				runException(L"Incompatible types in expression");
+				runException(p, L"Incompatible types in expression", L"Эти типы несовместимы в выражении");
 			if (type1 == INT_TYPE || type2 == INT_TYPE)
 				exp_type = INT_TYPE;
 			type_stack.push(exp_type);
@@ -464,20 +475,20 @@ bool LexemChecker::checkExp5() // <выр 5>
 		while (checkSign5())
 		{
 			if (!checkExp6())
-				runException(L"Expected value in expression");
+				runException(p, L"Expected value in expression", L"Хочу операнд в выражения");
 			TYPE type2 = popType();
 			TYPE type1 = popType();
 			type1.is_adress = 0;
 			type2.is_adress = 0;
 			if (type1.depth > 0 || type2.depth > 0)
-				runException(L"Incompatible types in expression");
+				runException(p, L"Incompatible types in expression", L"Эти типы несовместимы в выражении");
 			if (type1 == VOID_TYPE || type2 == VOID_TYPE)
-				runException(L"Type 'void' mustn't be in expression");
+				runException(p, L"Type 'void' mustn't be in expression", L"Тип 'void' недостоин использоваться в выражении");
 			TYPE exp_type = BOOL_TYPE;
 			if (type1 == FLOAT_TYPE || type1 == STRING_TYPE)
-				runException(L"Incompatible types in expression");
+				runException(p, L"Incompatible types in expression", L"Эти типы несовместимы в выражении");
 			if (type2 == FLOAT_TYPE || type2 == STRING_TYPE)
-				runException(L"Incompatible types in expression");
+				runException(p, L"Incompatible types in expression", L"Эти типы несовместимы в выражении");
 			if (type1 == INT_TYPE || type2 == INT_TYPE)
 				exp_type = INT_TYPE;
 			type_stack.push(exp_type);
@@ -494,20 +505,20 @@ bool LexemChecker::checkExp6() // <выр 6>
 		while (checkSign6())
 		{
 			if (!checkExp7())
-				runException(L"Expected value in expression");
+				runException(p, L"Expected value in expression", L"Хочу операнд в выражения");
 			TYPE type2 = popType();
 			TYPE type1 = popType();
 			type1.is_adress = 0;
 			type2.is_adress = 0;
 			if (type1.depth > 0 || type2.depth > 0)
-				runException(L"Incompatible types in expression");
+				runException(p, L"Incompatible types in expression", L"Эти типы несовместимы в выражении");
 			if (type1 == VOID_TYPE || type2 == VOID_TYPE)
-				runException(L"Type 'void' mustn't be in expression");
+				runException(p, L"Type 'void' mustn't be in expression", L"Тип 'void' недостоин использоваться в выражении");
 			TYPE exp_type = BOOL_TYPE;
 			if (type1 == FLOAT_TYPE || type1 == STRING_TYPE)
-				runException(L"Incompatible types in expression");
+				runException(p, L"Incompatible types in expression", L"Эти типы несовместимы в выражении");
 			if (type2 == FLOAT_TYPE || type2 == STRING_TYPE)
-				runException(L"Incompatible types in expression");
+				runException(p, L"Incompatible types in expression", L"Эти типы несовместимы в выражении");
 			if (type1 == INT_TYPE || type2 == INT_TYPE)
 				exp_type = INT_TYPE;
 			type_stack.push(exp_type);
@@ -524,17 +535,17 @@ bool LexemChecker::checkExp7() // <выр 7>
 		while (checkSign7())
 		{
 			if (!checkExp8())
-				runException(L"Expected value in expression");
+				runException(p, L"Expected value in expression", L"Хочу операнд в выражения");
 			TYPE type2 = popType();
 			TYPE type1 = popType();
 			type1.is_adress = 0;
 			type2.is_adress = 0;
 			if (type1 == VOID_TYPE || type2 == VOID_TYPE)
-				runException(L"Type 'void' mustn't be in expression");
+				runException(p, L"Type 'void' mustn't be in expression", L"Тип 'void' недостоин использоваться в выражении");
 			if (type1.depth > 0 || type2.depth > 0)
-				runException(L"Incompatible types in expression");
+				runException(p, L"Incompatible types in expression", L"Эти типы несовместимы в выражении");
 			if ((type1 == STRING_TYPE) != (type2 == STRING_TYPE))
-				runException(L"Incompatible types in expression");
+				runException(p, L"Incompatible types in expression", L"Эти типы несовместимы в выражении");
 			type_stack.push(BOOL_TYPE);
 			polis_.push_back(popSign());
 		}
@@ -549,17 +560,17 @@ bool LexemChecker::checkExp8() // <выр 8>
 		while (checkSign8())
 		{
 			if (!checkExp9())
-				runException(L"Expected value in expression");
+				runException(p, L"Expected value in expression", L"Хочу операнд в выражения");
 			TYPE type2 = popType();
 			TYPE type1 = popType();
 			type1.is_adress = 0;
 			type2.is_adress = 0;
 			if (type1 == VOID_TYPE || type2 == VOID_TYPE)
-				runException(L"Type 'void' mustn't be in expression");
+				runException(p, L"Type 'void' mustn't be in expression", L"Тип 'void' недостоин использоваться в выражении");
 			if (type1.depth > 0 || type2.depth > 0)
-				runException(L"Incompatible types in expression");
+				runException(p, L"Incompatible types in expression", L"Эти типы несовместимы в выражении");
 			if ((type1 == STRING_TYPE) != (type2 == STRING_TYPE))
-				runException(L"Incompatible types in expression");
+				runException(p, L"Incompatible types in expression", L"Эти типы несовместимы в выражении");
 			type_stack.push(BOOL_TYPE);
 			polis_.push_back(popSign());
 		}
@@ -574,7 +585,7 @@ bool LexemChecker::checkExp9() // <выр 9>
 		while (checkSign9())
 		{
 			if (!checkExp10())
-				runException(L"Expected value in expression");
+				runException(p, L"Expected value in expression", L"Хочу операнд в выражения");
 			TYPE type2 = popType();
 			TYPE type1 = popType();
 			type1.is_adress = 0;
@@ -584,11 +595,11 @@ bool LexemChecker::checkExp9() // <выр 9>
 			if (type2 == BOOL_TYPE)
 				type2 = INT_TYPE;
 			if (type1 == VOID_TYPE || type2 == VOID_TYPE)
-				runException(L"Type 'void' mustn't be in expression");
+				runException(p, L"Type 'void' mustn't be in expression", L"Тип 'void' недостоин использоваться в выражении");
 			if (type1 != INT_TYPE || type2 != INT_TYPE)
-				runException(L"Incompatible types in expression");
+				runException(p, L"Incompatible types in expression", L"Эти типы несовместимы в выражении");
 			if (type1.depth > 0 || type2.depth > 0)
-				runException(L"Incompatible types in expression");
+				runException(p, L"Incompatible types in expression", L"Эти типы несовместимы в выражении");
 			type_stack.push(INT_TYPE);
 			polis_.push_back(popSign());
 		}
@@ -603,19 +614,19 @@ bool LexemChecker::checkExp10() // <выр 10>
 		while (checkSign10())
 		{
 			if (!checkExp11())
-				runException(L"Expected value in expression");
+				runException(p, L"Expected value in expression", L"Хочу операнд в выражения");
 			TYPE type2 = popType();
 			TYPE type1 = popType();
 			type1.is_adress = 0;
 			type2.is_adress = 0;
 			if (type1 == VOID_TYPE || type2 == VOID_TYPE)
-				runException(L"Type 'void' mustn't be in expression");
+				runException(p, L"Type 'void' mustn't be in expression", L"Тип 'void' недостоин использоваться в выражении");
 			if (type1.depth > 0 || type2.depth > 0)
-				runException(L"Incompatible types in expression");
+				runException(p, L"Incompatible types in expression", L"Эти типы несовместимы в выражении");
 			if (type1 == STRING_TYPE || type2 == STRING_TYPE)
 			{
 				if (popSign(0).second == L"-")
-					runException(L"Incompatible types in expression");
+					runException(p, L"Incompatible types in expression", L"Эти типы несовместимы в выражении");
 				type_stack.push(STRING_TYPE);
 				polis_.push_back(popSign());
 				continue;
@@ -640,22 +651,22 @@ bool LexemChecker::checkExp11() // <выр 11>
 		while (checkSign11())
 		{
 			if (!checkExp12())
-				runException(L"Expected value in expression");
+				runException(p, L"Expected value in expression", L"Хочу операнд в выражения");
 			TYPE type2 = popType();
 			TYPE type1 = popType();
 			type1.is_adress = 0;
 			type2.is_adress = 0;
 			if (type1 == VOID_TYPE || type2 == VOID_TYPE)
-				runException(L"Type 'void' mustn't be in expression");
+				runException(p, L"Type 'void' mustn't be in expression", L"Тип 'void' недостоин использоваться в выражении");
 			if (type1 == STRING_TYPE || type2 == STRING_TYPE)
-				runException(L"Incompatible types in expression");
+				runException(p, L"Incompatible types in expression", L"Эти типы несовместимы в выражении");
 			TYPE exp_type = INT_TYPE;
 			if (type1.depth > 0 || type2.depth > 0)
-				runException(L"Incompatible types in expression");
+				runException(p, L"Incompatible types in expression", L"Эти типы несовместимы в выражении");
 			if (type1 == FLOAT_TYPE || type2 == FLOAT_TYPE)
 			{
 				if (popSign(0).second == L"%")
-					runException(L"Incompatible types in expression");
+					runException(p, L"Incompatible types in expression", L"Эти типы несовместимы в выражении");
 				exp_type = FLOAT_TYPE;
 			}
 			type_stack.push(exp_type);
@@ -681,7 +692,7 @@ bool LexemChecker::checkExp12() // <выр 12>
 			type_stack.push(type);
 		if (type == INT_TYPE || type == CHAR_TYPE)
 			type_stack.push(BOOL_TYPE);
-		else runException(L"Incorrect type in expression");
+		else runException(p, L"Incorrect type in expression", L"Неподходящий тип операнда для выражения");
 		while (sgn--)
 		{
 			polis_.push_back(popSign());
@@ -689,7 +700,7 @@ bool LexemChecker::checkExp12() // <выр 12>
 		return 1;
 	}
 	if (sgn && !exp)
-		runException(L"Expected value after sign");
+		runException(p, L"Expected value after sign", L"И чо я тут жду выражение после знака? ._");
 	return exp;
 }
 bool LexemChecker::checkExp13() // <выр 13> 
@@ -713,10 +724,10 @@ bool LexemChecker::checkExp13() // <выр 13>
 			}
 			return 1;
 		}
-		else runException(L"Incorrect type in expression");
+		else runException(p, L"Incorrect type in expression", L"Неподходящий тип операнда для выражения");
 	}
 	if (sgn && !exp)
-		runException(L"Expected value after sign");
+		runException(p, L"Expected value after sign", L"");
 	return exp;
 }
 bool LexemChecker::checkExp14() // <выр 14> 
@@ -742,10 +753,10 @@ bool LexemChecker::checkExp14() // <выр 14>
 			}
 			return 1;
 		}
-		else runException(L"Incorrect type in expression");
+		else runException(p, L"Incorrect type in expression", L"Неподходящий тип операнда для выражения");
 	}
 	if (sgn && !exp)
-		runException(L"Expected value after sign");
+		runException(p, L"Expected value after sign", L"После знака всегда идёт выражение, малыш:) ._");
 	return exp;
 }
 bool LexemChecker::checkExp15() // <выр 15> 
@@ -760,7 +771,7 @@ bool LexemChecker::checkExp15() // <выр 15>
 	{
 		TYPE type = popType(0);
 		if (!type.is_adress)
-			runException(L"This isn't a variable");
+			runException(p, L"This isn't a variable", L"Прошу подать переменную");
 		while (sgn--)
 		{
 			lexem sign = popSign();
@@ -775,10 +786,10 @@ bool LexemChecker::checkExp15() // <выр 15>
 			return 1;
 		if (type == CHAR_TYPE)
 			return 1;
-		runException(L"Incorrect type in expression");
+		runException(p, L"Incorrect type in expression", L"Неподходящий тип операнда для выражения");
 	}
 	if (sgn && !exp)
-		runException(L"Expected value after sign");
+		runException(p, L"Expected value after sign", L"После знака всегда идёт выражение, малыш:) ._");
 	return exp;
 }
 bool LexemChecker::checkExp16() // <выр 16> 
@@ -786,10 +797,13 @@ bool LexemChecker::checkExp16() // <выр 16>
 	if (checkValue())
 	{
 		TYPE type = popType(0);
-		if (type == VOID_TYPE)
-			runException(L"Type '" + type.to_str() + L"' is prohibited in expression");
 		if (checkSign16())
 		{
+			if (type == VOID_TYPE)
+				runException(p, 
+					L"Type '" + type.to_str() + L"' mustn't be in expression",
+					L"Тип '" + type.to_str() + L"' недостоин этого выражения"
+				);
 			int sgn = 1;
 			while (checkSign16())
 			{
@@ -802,7 +816,7 @@ bool LexemChecker::checkExp16() // <выр 16>
 				polis_.push_back(sign);
 			}
 			if (!type.is_adress)
-				runException(L"This isn't a variable");
+				runException(p, L"This isn't a variable", L"Это не переменная. Подайте переменную");
 			if (type == INT_TYPE)
 				return 1;
 			if (type == BOOL_TYPE)
@@ -811,7 +825,7 @@ bool LexemChecker::checkExp16() // <выр 16>
 				return 1;
 			if (type == CHAR_TYPE)
 				return 1;
-			runException(L"Incorrect type in expression");
+			runException(p, L"Incorrect type in expression", L"Неподходящий тип операнда для выражения");
 		}
 		return 1;
 	}
@@ -836,12 +850,12 @@ int LexemChecker::checkFuctionCall() // <результат функции>
 			while (match(7, L","))
 			{
 				if (!checkExpression())
-					runException(L"Expected argument");
+					runException(p, L"Expected argument", L"Хочу аргумент");
 				++arg_count;
 			}
 		}
 		if (!match(7, L")"))
-			runException(L"Invalid argument");
+			runException(p, L"Invalid argument", L"Просто неверный аргумент");
 		if (arg_count == 0)
 			arg_count = -1;
 		return arg_count;
@@ -862,22 +876,23 @@ bool LexemChecker::checkValue() // <значение>
 			{
 				cast = popType();
 				if (cast.depth > 0)
-					runException(L"Value mustn't be casted to array");
+					runException(p, L"Value mustn't be casted to array", L"Хочешь приводить к массивам? Тогда приводи сам ");
+
 			}
 		}
 	}
 	if (match(7, L"("))
 	{
 		if (!checkExpression())
-			runException(L"Expected expession");
+			runException(p, L"Expected expession", L"Ку-ку! Тут надо выражение");
 		if (!match(7, L")"))
-			runException(L"Expected ending bracket");
+			runException(p, L"Expected ending bracket", L"Уходя, всегда закрывайте скобки");
 		if (cast != NO_TYPE)
 		{
 			TYPE type = popType();
 			type_stack.push(cast);
 			if (type.depth > 0 && (type.basic != CHAR_ || type.depth != 1 || cast != STRING_TYPE))
-				runException(L"Array mustn't be casted into another type");
+				runException(p, L"Array mustn't be casted into another type", L"Массивы ни к какому типу не приводятся");
 			polis_.push_back({ LEX_INT, std::to_wstring(cast.basic) });
 			polis_.push_back({ LEX_OPERATION, L"cast" });
 		}
@@ -905,7 +920,7 @@ bool LexemChecker::checkOperators()
 		else if (checkOperator())
 		{
 			if (!match(7, L";"))
-				runException(L"Excepted ';'");
+				runException(p, L"Excepted ';'", L"Оооо да... Я даже не буду подсказывать тебе, где ошибка..");
 			isop = 1;
 		}
 	} while (isop);
@@ -926,14 +941,14 @@ bool LexemChecker::checkStreamOperator() // <оператор потока>
 	/*if (match(1, L"in")) // синтаксис in изменён
 	{
 		if (!checkVariable())
-			runException(L"Expected variable");
+			runException(p, L"Expected variable");
 		polis_.push_back({ LEX_OPERATION, L"in" });
 		return 1;
 	}*/
 	if (match(1, L"out"))
 	{
 		if (!checkExpression())
-			runException(L"Expected expression");
+			runException(p, L"Expected expression", L"Подайте выражение");
 		polis_.push_back({ LEX_OPERATION, L"out" });
 		popType();
 		return 1;
@@ -949,12 +964,12 @@ bool LexemChecker::checkIf() // <оператор if>
 	if (match(1, L"if"))
 	{
 		if (!match(7, L"("))
-			runException(L"Expected arguments in brackets");
+			runException(p, L"Expected arguments in brackets", L"Мечталось об условии в скобках");
 		if (!checkExpression())
-			runException(L"Expected expression");
+			runException(p, L"Expected expression", L"Подайте выражение");
 		popType();
 		if (!match(7, L")"))
-			runException(L"Expected ending bracket");
+			runException(p, L"Expected ending bracket", L"Уходя, всегда закрывайте скобки");
 		int code_line1 = polis_.size();
 		polis_.push_back({ LEX_INT, L"@" });
 		polis_.push_back({ LEX_OPERATION, L"?!" });
@@ -962,7 +977,7 @@ bool LexemChecker::checkIf() // <оператор if>
 		{
 			pushBlock();
 			if (!(checkOperator() && match(7, L";")))
-				runException(L"Expected operator");
+				runException(p, L"Expected operator", L"Оператор зело нужон тут");
 			popBlock();
 		}
 		if (match(1, L"else"))
@@ -979,7 +994,7 @@ bool LexemChecker::checkIf() // <оператор if>
 			}
 			pushBlock();
 			if (!(checkOperator() && match(7, L";")))
-				runException(L"Expected operator");
+				runException(p, L"Expected operator", L"Оператор зело нужон тут");
 			popBlock();
 			polis_[code_line2].second = std::to_wstring(polis_.size());
 			return 1;
@@ -997,12 +1012,12 @@ bool LexemChecker::checkWhile() // <оператор while>
 		int code_line1 = polis_.size();
 
 		if (!match(7, L"("))
-			runException(L"Expected arguments in brackets");
+			runException(p, L"Expected arguments in brackets", L"Мечталось о чудном условии в скобках");
 		if (!checkExpression())
-			runException(L"Expected expression");
+			runException(p, L"Expected expression", L"Подайте выражение");
 		popType();
 		if (!match(7, L")"))
-			runException(L"Expected ending bracket");
+			runException(p, L"Expected ending bracket", L"Уходя, всегда закрывайте скобки");
 
 		int code_line2 = polis_.size();
 		polis_.push_back({ LEX_INT, L"@" });
@@ -1012,7 +1027,7 @@ bool LexemChecker::checkWhile() // <оператор while>
 		{
 			pushBlock();
 			if (!(checkOperator() && match(7, L";")))
-				runException(L"Expected operator");
+				runException(p, L"Expected operator", L"Оператор зело нужон тут");
 			popBlock();
 		}
 		polis_.push_back({ LEX_INT, std::to_wstring(code_line1) });
@@ -1040,17 +1055,17 @@ bool LexemChecker::checkFor() // <оператор for>
 		int break_depth = break_stack.size(), continue_depth = continue_stack.size();
 		pushBlock();
 		if (!match(7, L"("))
-			runException(L"Expected arguments in brackets");
+			runException(p, L"Expected arguments in brackets", L"Агрументы в скобках! Это ж фор, камон");
 		checkForOperator();
 		if (!match(7, L";"))
-			runException(L"Expected ';'");
+			runException(p, L"Expected ';'", L"Оооо да... Я даже не буду подсказывать тебе, где ошибка..");
 		int code_line1 = polis_.size();
 		polis_.push_back({ LEX_INT, L"@" });
 		polis_.push_back({ LEX_OPERATION, L"!!" });
 
 		checkExpression();
 		if (!match(7, L";"))
-			runException(L"Expected ';'");
+			runException(p, L"Expected ';'", L"Оооо да... Я даже не буду подсказывать тебе, где ошибка..");
 		int code_line2 = polis_.size();
 		polis_.push_back({ LEX_INT, L"@" });
 		polis_.push_back({ LEX_OPERATION, L"?!" });
@@ -1062,7 +1077,7 @@ bool LexemChecker::checkFor() // <оператор for>
 		polis_.push_back({ LEX_OPERATION, L"!!" });
 
 		if (!match(7, L")"))
-			runException(L"Expected ending bracket");
+			runException(p, L"Expected ending bracket", L"Уходя, всегда закрывайте скобки");
 
 		polis_[code_line1].second = std::to_wstring(polis_.size());
 		polis_[code_line2+2].second = std::to_wstring(polis_.size());
@@ -1071,7 +1086,7 @@ bool LexemChecker::checkFor() // <оператор for>
 		{
 			pushBlock();
 			if (!(checkOperator() && match(7, L";")))
-				runException(L"LExpected operator");
+				runException(p, L"LExpected operator", L"Да где опять оператор то? ._");
 			popBlock();
 		}
 		popBlock();
@@ -1115,17 +1130,20 @@ bool LexemChecker::checkGoto() // <оператор перехода>
 		if (return_type == VOID_TYPE)
 		{
 			if (checkExpression())
-				runException(L"Void function cannot return any value");
-			return 1;
+				runException(p, L"Void function cannot return any value", L"Вообще-то данная функция не возвращает значений");
+			polis_.push_back({ LEX_INT, L"0" });
 		}
-		if (!checkExpression())
-			runException(L"Expected expression");
-		if (return_type == NO_TYPE)
-			runException(L"This block cannot have return operator");
-		tryCast(return_type, popType());
-		popType();
-		polis_.push_back(tid_tree_->get_return_adress());
-		polis_.push_back({ LEX_OPERATION, L"arg=" });
+		else
+		{
+			if (!checkExpression())
+				runException(p, L"Expected expression", L"Подайте выражение");
+			if (return_type == NO_TYPE)
+				runException(p, L"This block cannot have return operator", L"В этом блоке не может быть return");
+			tryCast(return_type, popType());
+			popType();
+			polis_.push_back(tid_tree_->get_return_adress());
+			polis_.push_back({ LEX_OPERATION, L"arg=" });
+		}
 		tid_tree_->push_return_line(polis_.size());
 		polis_.push_back({ LEX_INT, L"@" });
 		polis_.push_back({ LEX_OPERATION, L"!!" });
@@ -1134,7 +1152,7 @@ bool LexemChecker::checkGoto() // <оператор перехода>
 	if (match(1, L"goto"))
 	{
 		if (!checkName())
-			runException(L"Expected identifier");
+			runException(p, L"Expected identifier", L"А хотелось сюда индентификатор..");
 		goto_stack.push({ polis_.size(), popName() });
 		polis_.push_back({ LEX_INT, L"@" });
 		polis_.push_back({ LEX_OPERATION, L"!!" });
@@ -1143,11 +1161,17 @@ bool LexemChecker::checkGoto() // <оператор перехода>
 	if (match(1, L"label"))
 	{
 		if (!checkName())
-			runException(L"Expected identifier");
+			runException(p, L"Expected identifier", L"А хотелось сюда индентификатор..");
 		if (checkKnown(popName(0)))
-			runException(L"Identifier '" + popName(0) + L"' is already used");
+			runException(p, 
+				L"Identifier '" + popName(0) + L"' is already used",
+				L"Имя '" + popName(0) + L"' уже кто-то занял"
+			);
 		if (label_map.find(popName(0)) != label_map.end())
-			runException(L"Label '" + popName(0) + L"' is already used");
+			runException(p, 
+				L"Label '" + popName(0) + L"' is already used",
+				L"Метка '" + popName(0) + L"' уже используется"
+			);
 		label_map[popName(0)] = polis_.size();
 		pushId(popName(), { TYPES::VOID_, 0 });
 		return 1;
@@ -1159,7 +1183,7 @@ bool LexemChecker::checkDescription() // <описание>
 	if (checkType())
 	{
 		if (!checkName())
-			runException(L"Expected identifier");
+			runException(p, L"Expected identifier", L"А хотелось сюда индентификатор..");
 		std::vector<std::wstring> array_ids;
 		int array_line;
 		int var_type = 0;
@@ -1168,9 +1192,12 @@ bool LexemChecker::checkDescription() // <описание>
 		if (tid_tree_->is_function(nam))
 		{
 			if (!tid_tree_->is_current(nam))
-				runException(L"Function can be descripted only in the same block");
+				runException(p, 
+					L"Function can be descripted only in the same block",
+					L"Да опишут глупцы функцию и её шаблон в разных блоках! А мудрецы рассмеются и напишут эту ошибку"
+				);
 			if (!is_temp)
-				runException(L"Fuction is already descripted");
+				runException(p, L"Fuction is already descripted", L"Функция уже была описана");
 		}
 		TYPE typ = popType();
 		if (typ.depth > 0)
@@ -1188,7 +1215,7 @@ bool LexemChecker::checkDescription() // <описание>
 				int code_line = polis_.size();
 				polis_.push_back({});
 				if (!checkExpression())
-					runException(L"Expected expression");
+					runException(p, L"Expected expression", L"Подайте выражение");
 				TYPE exp_type = popType();
 				tryCast(typ, exp_type);
 				popType();
@@ -1206,14 +1233,14 @@ bool LexemChecker::checkDescription() // <описание>
 				if (var_type == 0)
 					polis_.push_back(tid_tree_->get_adress(nam));
 				if (!checkName())
-					runException(L"Expected identifier");
+					runException(p, L"Expected identifier", L"А хотелось сюда индентификатор..");
 				std::wstring nam2 = popName(0);
 				if (match(6, L"="))
 				{
 					int code_line = polis_.size();
 					polis_.push_back({});
 					if (!checkExpression())
-						runException(L"Expected expression");
+						runException(p, L"Expected expression", L"Подайте выражение");
 					TYPE exp_type = popType();
 					tryCast(typ, exp_type);
 					popType();
@@ -1230,7 +1257,7 @@ bool LexemChecker::checkDescription() // <описание>
 		}
 		if (typ.depth > 0)
 		{
-			polis_[array_line + 1].second = std::to_wstring(array_line);
+			polis_[array_line + 1].second = std::to_wstring(array_ids.size());
 			for (std::wstring id : array_ids) {
 				polis_[array_line].second += id + L" ";
 			}
@@ -1246,26 +1273,28 @@ bool LexemChecker::checkDescription() // <описание>
 			bool has_args = 0;
 			std::vector<TYPE>* args = tid_tree_->get_arguments(nam);
 			if (args == nullptr)
-				runException(L"We've found a bug in checkDescription");
+				runException(p, L"We've found a bug in checkDescription", L"О-па, у нас тут баги");
 			if (checkType())
 			{
 				has_args = 1;
 				TYPE first_type = popType();
+				if (first_type.depth > 0)
+					runException(p, L"Array mustn't be an argument in function", L"Нельзя пихать массив в функцию! Это не культурно");
 				if (is_temp)
 				{
 					if (args->size() == 0)
-						runException(L"Too many arguments in description");
+						runException(p, L"Too many arguments in description", L"Слииииишком много аргументов");
 					if (*(args->begin()) != first_type)
-						runException(L"Argument 1 has wrong type");
+						runException(p, L"Argument 1 has wrong type", L"У аргумента 1 не тот тип");
 				}
 				else args->push_back(first_type);
 				while (match(7, L","))
 				{
 					var_type = 2;
 					if (is_temp)
-						runException(L"Only one template can be created");
+						runException(p, L"Only one template can be created", L"Если вы написали два шаблона одной функции, вам только что об этом напомнили");
 					if (!checkType())
-						runException(L"Expected type");
+						runException(p, L"Expected type", L"Да я капирзный, но тут нужен именно тип");
 					args->push_back(popType());
 				}
 				if (!var_type && checkName())
@@ -1276,62 +1305,59 @@ bool LexemChecker::checkDescription() // <описание>
 					polis_.push_back({ LEX_OPERATION, L"!!" });
 					last_tid->push_code(nam, polis_.size());
 
-					if (template_calls.find(nam) != template_calls.end()) {
-						for (int line : template_calls[nam]) {
-							polis_[line].second = std::to_wstring(polis_.size());
-						}
-					}
 					polis_.push_back({ LEX_INT, std::to_wstring(push_func_memory()) });
 					polis_.push_back({ LEX_OPERATION, L"push-mem" });
 					std::vector<std::wstring> new_names;
 
 					if (checkKnown(popName(0)))
-						runException(L"Identifier '" + popName(0) + L"' is already used");
+						runException(p, 
+							L"Identifier '" + popName(0) + L"' is already used",
+							L"Имя '" + popName(0) + L"' уже у кого-то в ходу"
+						);
 					new_names.push_back(popName(0));
 					pushId(popName(), first_type);
-
-					if (first_type.depth > 0)
-					{
-						polis_.push_back({ LEX_STRING, tid_tree_->get_adress(new_names.back()).second });
-						polis_.push_back({ LEX_INT, L"1" });
-						polis_.push_back({ LEX_INT, std::to_wstring(first_type.basic) });
-						polis_.push_back({ LEX_OPERATION, L"set-arrays" });
-					}
 
 					int temp_step = 1;
 					while (match(7, L","))
 					{
 						if (!checkType())
-							runException(L"Expected type");
+							runException(p, L"Expected type", L"Да я капирзный, но тут нужен именно тип");
 						if (is_temp)
 						{
 							if (temp_step >= args->size())
-								runException(L"Too many arguments in description");
+								runException(p, L"Too many arguments in description", L"");
 							if (*(args->begin() + temp_step) != popType(0))
-								runException(L"Argument " + std::to_wstring(temp_step + 1) + L" has wrong type");
+								runException(p, 
+									L"Argument " + std::to_wstring(temp_step + 1) + L" has wrong type",
+									L"У аргумента " + std::to_wstring(temp_step + 1) + L" несварение типов в функции и шаблоне"
+								);
 						}
 						else args->push_back(popType(0));
 						++temp_step;
 						if (!checkName())
-							runException(L"Expected identifier");
+							runException(p, L"Expected identifier", L"А хотелось сюда индентификатор..");
 						if (std::find(new_names.begin(), new_names.end(), popName(0)) != new_names.end())
-							runException(L"Argument '" + popName(0) + L"' is already used");
+							runException(p, 
+								L"Argument '" + popName(0) + L"' is already used",
+								L"Аргумент '" + popName(0) + L"' уже указан"
+							);
 						if (checkKnown(popName(0)))
-							runException(L"Identifier '" + popName(0) + L"' is already used");
+							runException(p, 
+								L"Identifier '" + popName(0) + L"' is already used",
+								L"Имя '" + popName(0) + L"' уже у кого-то в ходу"
+							);
 						new_names.push_back(popName(0));
+						if (popType().depth > 0)
+							runException(p, 
+								L"Array mustn't be an argument in function",
+								L"Нельзя пихать массив в функцию! Это не культурно"
+							);
 						pushId(popName(), popType());
-						if (first_type.depth > 0)
-						{
-							polis_.push_back({ LEX_STRING, tid_tree_->get_adress(new_names.back()).second });
-							polis_.push_back({ LEX_INT, L"1" });
-							polis_.push_back({ LEX_INT, std::to_wstring(first_type.basic) });
-							polis_.push_back({ LEX_OPERATION, L"set-arrays" });
-						}
 					}
 					if (is_temp && temp_step < args->size())
-						runException(L"Too few arguments in description");
+						runException(p, L"Too few arguments in description", L"Нужно больше аргументов! ._");
 					if (!match(7, L")"))
-						runException(L"Expected ending bracket");
+						runException(p, L"Expected ending bracket", L"Уходя, всегда закрывайте скобки");
 					while (!new_names.empty())
 					{
 						polis_.push_back(tid_tree_->get_adress(new_names.back()));
@@ -1340,10 +1366,20 @@ bool LexemChecker::checkDescription() // <описание>
 						new_names.pop_back();
 					}
 					if (!checkBlock())
-						runException(L"Expected description");
+						runException(p, L"Expected description", L"А описание?? ._");
+					if (template_calls.find(nam) != template_calls.end()) {
+						for (int line : template_calls[nam]) {
+							polis_[line].second = std::to_wstring(code_line1);
+						}
+					}
 					pushFunctionDefault(typ);
-					polis_.push_back(tid_tree_->get_return_adress());
-					polis_.push_back({ LEX_OPERATION, L"arg=" });
+					if (tid_tree_->get_return_type() == VOID_TYPE)
+						polis_.push_back({ LEX_INT, L"0" });
+					else
+					{
+						polis_.push_back(tid_tree_->get_return_adress());
+						polis_.push_back({ LEX_OPERATION, L"arg=" });
+					}
 					//polis_.push_back(tid_tree_->get_adress(nam));
 					std::vector<int>& return_lines = *tid_tree_->get_return_lines();
 					for (int line : return_lines) {
@@ -1360,7 +1396,7 @@ bool LexemChecker::checkDescription() // <описание>
 				}
 			}
 			if (!match(7, L")"))
-				runException(L"Expected ending bracket");
+				runException(p, L"Expected ending bracket", L"Уходя, всегда закрывайте скобки");
 			if (!var_type && !has_args)
 			{
 				int code_line2 = polis_.size();
@@ -1370,9 +1406,19 @@ bool LexemChecker::checkDescription() // <описание>
 				polis_.push_back({ LEX_OPERATION, L"push-mem" });
 				if (checkBlock())
 				{
+					if (template_calls.find(nam) != template_calls.end()) {
+						for (int line : template_calls[nam]) {
+							polis_[line].second = std::to_wstring(code_line2);
+						}
+					}
 					pushFunctionDefault(typ);
-					polis_.push_back(tid_tree_->get_return_adress());
-					polis_.push_back({ LEX_OPERATION, L"arg=" });
+					if (tid_tree_->get_return_type() == VOID_TYPE)
+						polis_.push_back({ LEX_INT, L"0" });
+					else
+					{
+						polis_.push_back(tid_tree_->get_return_adress());
+						polis_.push_back({ LEX_OPERATION, L"arg=" });
+					}
 					//polis_.push_back(tid_tree_->get_adress(nam));
 					last_tid->push_code(nam, code_line2+2);
 					std::vector<int>& return_lines = *tid_tree_->get_return_lines();
@@ -1386,7 +1432,7 @@ bool LexemChecker::checkDescription() // <описание>
 					polis_[code_line2].second = std::to_wstring(polis_.size());
 				}
 				else if (is_temp)
-					runException(L"Expected description");
+					runException(p, L"Expected description", L"Ох уж эти описания. Они так необходимы компилятору, наверное");
 				else polis_.pop_back(), polis_.pop_back();
 			}
 			popBlock();
@@ -1414,9 +1460,9 @@ bool LexemChecker::checkStructure() // <описание структуры>
 	if (match(1, L"struct"))
 	{
 		if (!checkName())
-			runException(L"Expected identifier");
+			runException(p, L"Expected identifier", L"А хотелось сюда индентификатор..");
 		if (!checkBlock())
-			runException(L"Expected description");
+			runException(p, L"Expected description", L"Ох уж эти описания. Они так необходимы компилятору, наверное");
 		return 1;
 	}
 	return 0;
@@ -1448,7 +1494,9 @@ bool LexemChecker::tryCast(TYPE to_type, TYPE from_type)
 		}
 		std::wstring excep_text = L"Cannot convert type '" + from_type.to_str();
 		excep_text += L"' to '" + to_type.to_str() + L"'";
-		runException(excep_text);
+		std::wstring excep_text_rus = L"Невозможно из типа '" + from_type.to_str();
+		excep_text += L"' сделать тип '" + to_type.to_str() + L"'";
+		runException(p, excep_text, excep_text_rus);
 	}
 	if (to_type == STRING_TYPE || to_type == BOOL_TYPE || to_type == CHAR_TYPE || from_type != STRING_TYPE)
 	{
@@ -1457,11 +1505,15 @@ bool LexemChecker::tryCast(TYPE to_type, TYPE from_type)
 			type_stack.push(to_type);
 			return 1;
 		}
-		runException(L"Do not use type 'void' in expressions. It doesn't have a value");
+		runException(p, 
+			L"Do not use type 'void' in expressions. It doesn't have a value", 
+			L"То, что void в принципе не имеет никакого значения, не остановлио вас от желания запихнуть его в выражение");
 	}
 	std::wstring excep_text = L"Cannot convert type '" + from_type.to_str();
 	excep_text += L"' to '" + to_type.to_str() + L"'";
-	runException(excep_text);
+	std::wstring excep_text_rus = L"Невозможно из типа '" + from_type.to_str();
+	excep_text += L"' сделать тип '" + to_type.to_str() + L"'";
+	runException(p, excep_text, excep_text_rus);
 	return 0;
 }
 
@@ -1470,7 +1522,7 @@ bool LexemChecker::match(int type, std::wstring word)
 
 	if (isEnd()) return 0;
 	if (term_[p].first == 0)
-		runException(L"Unexpected symbol");
+		runException(p, L"Unexpected symbol", L"Что за лексему вы мне подсунули? ._");
 	if (term_[p].first != type)
 		return 0;
 	if (term_[p].second != word)
@@ -1507,7 +1559,10 @@ void LexemChecker::popBlock()
 {
 	std::wstring temp = tid_tree_->get_any_template();
 	if (!temp.empty())
-		runException(L"Template '" + temp + L"' must have definition in the same block");
+		runException(p, 
+			L"Template '" + temp + L"' must have definition in the same block",
+			L"К шаблону функции '" + temp + L"' обязано быть определение в том же блоке"
+		);
 	if (tid_tree_->parent != nullptr)
 		tid_tree_ = tid_tree_->parent;
 }
@@ -1516,13 +1571,16 @@ void LexemChecker::pushId(std::wstring name, TYPE type)
 {
 	type.is_adress = 1;
 	if (!tid_tree_->push_id(name, type))
-		runException(L"Identifier '" + name + L"' is already used");
+		runException(p, 
+			L"Identifier '" + name + L"' is already used",
+			L"Имя '" + name + L"'  уже кто-то занял"
+		);
 }
 
 std::wstring LexemChecker::popName(bool pop)
 {
 	if (name_stack.empty())
-		runException(L"We've found a bug in popName");
+		runException(p, L"We've found a bug in popName", L"Тащите дихлофос! ._");
 	auto res = name_stack.top();
 	if (pop) name_stack.pop();
 	return res;
@@ -1531,7 +1589,7 @@ std::wstring LexemChecker::popName(bool pop)
 TYPE LexemChecker::popType(bool pop)
 {
 	if (type_stack.empty())
-		runException(L"We've found a bug in popName");
+		runException(p, L"We've found a bug in popName", L"Тащите дихлофос! ._");
 	auto res = type_stack.top();
 	if (pop) type_stack.pop();
 	return res;
@@ -1540,14 +1598,8 @@ TYPE LexemChecker::popType(bool pop)
 lexem LexemChecker::popSign(bool pop)
 {
 	if (sign_stack.empty())
-		runException(L"We've found a bug in popSign");
+		runException(p, L"We've found a bug in popSign", L"Тащите дихлофос! ._");
 	auto res = sign_stack.top();
 	if (pop) sign_stack.pop();
 	return res;
-}
-
-void LexemChecker::runException(std::wstring reason)
-{
-	std::wcout << L"Syntax Error: " << reason << ". Lexem: " << p << '\n';
-	exit(0);
 }

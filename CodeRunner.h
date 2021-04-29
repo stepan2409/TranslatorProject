@@ -29,6 +29,7 @@ public:
 	void runMatOperation(std::wstring op);
 	void runBinOperation(std::wstring op);
 	void runLogicOperation(std::wstring op);
+	void (*runExceprion)(int, std::wstring, std::wstring);
 
 	value getValue();
 	value getPointer();
@@ -37,6 +38,8 @@ public:
 	float getFloat();
 	std::wstring getString();
 	wchar_t getChar();
+	int getSize(value& arr);
+	int getSize(value& arr, int& size);
 
 private:
 	// ссылки на массивы из Translator
@@ -60,7 +63,6 @@ private:
 	std::vector<const wchar_t*> logic_operations = { L"||", L"&&", L"==", L"!=", L">", L"<", L">=", L"<=" };
 	bool isIn(std::wstring op, std::vector<const wchar_t*>& ops);
 
-	int getSize(value& arr);
 	TYPE getTopType(TYPE t1, TYPE t2);
 
 	friend void set_values_function(TID*);
