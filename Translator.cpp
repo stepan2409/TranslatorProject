@@ -15,6 +15,7 @@
 
 const int MAX_SIZE = 1 << 22;
 const int MAX_STACK_SIZE = 1 << 16;
+const int STRING_REGEX_NUMBER = 5;
 
 const int MAX_ADDING = 10;
 typedef std::pair<int, std::wstring> lexem;
@@ -398,6 +399,20 @@ void getLexemsUsingMatch (std::wstring text, std::vector<std::wregex>& regexes, 
 		}
 		text = text.substr (p);
 		p = 0;
+		if (type == STRING_REGEX_NUMBER) {
+			for (int i = 0; i + 1 < name.length (); ++i) {
+				if (name[i] == '\\') {
+					if (name[i + 1] == 'n') {
+						name.erase (i, 2);
+						name.insert (i, L"\n");
+					}
+					else if (name[i + 1] == 't') {
+						name.erase (i, 2);
+						name.insert (i, L"\t");
+					}
+				}
+			}
+		}
 		lexems.push_back ({ type, name });
 	}
 }

@@ -1,0 +1,17 @@
+Lexical analyzing...
+Successfully created:
+{1, "out"}
+{5, ""aba
+caba""}
+{7, ";"}
+Lexical analyzing completed!
+Generated 3 lexems:
+1. {1, "out"}
+2. {5, ""aba
+caba""}
+3. {7, ";"}
+Syntax: OK 
+Generated 2 polis commands: 
+0. {STRING, ""aba
+caba""}
+1. {OPERATION, "out"}
