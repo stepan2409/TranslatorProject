@@ -302,8 +302,8 @@ bool LexemChecker::checkShift(bool after_type) // <сдвиг> если after_type = 1, т
 
 bool LexemChecker::checkSign1() // <знак 1> 
 {
-	return match(6, L"=") || match(6, L"+=") || match(6, L"-=") || match(6, L"*=")
-		|| match(6, L"/=") || match(6, L"|=") || match(6, L"&=");
+	return match(6, L"=") || match(6, L"+=") || match(6, L"-=") || match(6, L"*=") || match(6, L"%=")
+		|| match(6, L"/=") || match(6, L"|=") || match(6, L"&=") || match(6, L"^=");
 }
 bool LexemChecker::checkSign2() // <знак 2> 
 {
@@ -690,7 +690,7 @@ bool LexemChecker::checkExp12() // <выр 12>
 		type.is_adress = 0;
 		if (type == BOOL_TYPE)
 			type_stack.push(type);
-		if (type == INT_TYPE || type == CHAR_TYPE)
+		else if (type == INT_TYPE || type == CHAR_TYPE)
 			type_stack.push(BOOL_TYPE);
 		else runException(p, L"Incorrect type in expression", L"Неподходящий тип операнда для выражения");
 		while (sgn--)
@@ -1347,7 +1347,7 @@ bool LexemChecker::checkDescription() // <описание>
 								L"Имя '" + popName(0) + L"' уже у кого-то в ходу"
 							);
 						new_names.push_back(popName(0));
-						if (popType().depth > 0)
+						if (popType(0).depth > 0)
 							runException(p, 
 								L"Array mustn't be an argument in function",
 								L"Нельзя пихать массив в функцию! Это не культурно"
@@ -1369,7 +1369,7 @@ bool LexemChecker::checkDescription() // <описание>
 						runException(p, L"Expected description", L"А описание?? ._");
 					if (template_calls.find(nam) != template_calls.end()) {
 						for (int line : template_calls[nam]) {
-							polis_[line].second = std::to_wstring(code_line1);
+							polis_[line].second = std::to_wstring(code_line1+2);
 						}
 					}
 					pushFunctionDefault(typ);
@@ -1408,7 +1408,7 @@ bool LexemChecker::checkDescription() // <описание>
 				{
 					if (template_calls.find(nam) != template_calls.end()) {
 						for (int line : template_calls[nam]) {
-							polis_[line].second = std::to_wstring(code_line2);
+							polis_[line].second = std::to_wstring(code_line2+2);
 						}
 					}
 					pushFunctionDefault(typ);

@@ -19,7 +19,6 @@ const int STRING_REGEX_NUMBER = 5;
 
 const int MAX_ADDING = 10;
 typedef std::pair<int, std::wstring> lexem;
-std::locale rusLoc = std::locale("Russian");
 
 std::map<std::wstring, std::wstring> serviceDict;
 std::wstring regexServiceCode;
@@ -64,7 +63,7 @@ void runException(int code, std::wstring eng, std::wstring rus)
 	}
 	else
 	{
-		int line = lexem_lines[code] + 1;
+		int line = lexem_lines[min(lexem_lines.size()-1, code)] + 1;
 		std::wcout << L"Синтаксический косяк: " << rus;
 		std::wcout << L". Строка " << line << L" (Syntax error: " << eng << L". Line " << line << L")\n";
 	}
@@ -184,7 +183,7 @@ void set_values_function(TID* tree)
 
 void setLocale(std::wistream &str)
 {
-	str.imbue(std::locale(str.getloc(), new std::codecvt<char32_t, wchar_t, std::mbstate_t>));
+	str.imbue(std::locale(str.getloc(), new std::codecvt<char16_t, wchar_t, std::mbstate_t>));
 }
 
 // Конфигуратор файлов. Берет из config.txt адреса файлов и присваивает их потокам. Если до какого-то файла не может достучаться кидает invalid_argument
@@ -269,7 +268,6 @@ void decomment(std::wstring& text, wchar_t shortComOne, wchar_t shortComTwo, wch
 
 void regexesReader(std::wstring& regexesText, std::vector<std::wregex>& regexesVector) {
 	std::wistringstream ris(regexesText);
-	ris.imbue(rusLoc);
 	int n = 0;
 	ris >> n;
 	if (n == 0) {
@@ -289,7 +287,6 @@ void regexesReader(std::wstring& regexesText, std::vector<std::wregex>& regexesV
 			std::getline(ris, enteredRegexString);
 		try {
 			std::wregex enteredRegex;
-			enteredRegex.imbue(rusLoc);
 			enteredRegex.assign(enteredRegexString);
 			regexesVector.push_back (enteredRegex);
 		}
@@ -702,17 +699,14 @@ std::string runCode(std::vector<lexem> & polis)
 
 int main()
 {
-	setlocale(LC_ALL, "Russian");
-	std::wcout.imbue(rusLoc);
-	std::wcin.imbue(rusLoc);
-	//setLocale(std::wcin);
+	setlocale(LC_ALL, "rus");
 	SetConsoleCP(CP_UTF8);
 	SetConsoleOutputCP(CP_UTF8);
+	std::wcin.imbue(std::locale(""));
 	std::vector<lexem> lexems;
 	std::vector<std::wregex> regexes;
 	std::wstring text;
 	std::wofstream output;
-	output.imbue(rusLoc);
 	if (!initFiles(output, text, regexes))
 		return 0;
 	output << "Lexical analyzing..." << std::endl;

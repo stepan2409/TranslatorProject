@@ -57,7 +57,7 @@ private:
 
 	std::stack<std::pair<TYPE, std::any>> runtime_stack;
 
-	std::vector<const wchar_t*> mem_operations = { L"+=", L"-=", L"*=", L"/=", L"%=", L"++a", L"--a", L"a++", L"a--" };
+	std::vector<const wchar_t*> mem_operations = { L"+=", L"-=", L"*=", L"/=", L"%=", L"|=", L"&=", L"^=", L"++a", L"--a", L"a++", L"a--" };
 	std::vector<const wchar_t*> mat_operations = { L"+", L"-", L"*", L"/", L"%" };
 	std::vector<const wchar_t*> bin_operations = { L"|", L"&", L"^", L"~", L">>", L"<<" };
 	std::vector<const wchar_t*> logic_operations = { L"||", L"&&", L"==", L"!=", L">", L"<", L">=", L"<=" };

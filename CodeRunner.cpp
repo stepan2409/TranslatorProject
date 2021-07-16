@@ -76,7 +76,7 @@ void CodeRunner::pushValue(lexem& val)
 		runtime_stack.push({ BOOL_TYPE, val.second.size() > 0});
 	}
 	else if (basic == LEX_FLOAT)
-		runtime_stack.push({ FLOAT_TYPE,  _wtof(str) });
+		runtime_stack.push({ FLOAT_TYPE, float(_wtof(str)) });
 	else if (basic == LEX_STRING)
 	{
 		std::wstring str = val.second;
