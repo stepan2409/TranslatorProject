@@ -183,7 +183,7 @@ void set_values_function(TID* tree)
 
 void setLocale(std::wistream &str)
 {
-	str.imbue(std::locale(str.getloc(), new std::codecvt<char16_t, wchar_t, std::mbstate_t>));
+	str.imbue(std::locale(".utf8"));
 }
 
 // Конфигуратор файлов. Берет из config.txt адреса файлов и присваивает их потокам. Если до какого-то файла не может достучаться кидает invalid_argument
@@ -699,10 +699,9 @@ std::string runCode(std::vector<lexem> & polis)
 
 int main()
 {
-	setlocale(LC_ALL, "rus");
+	std::locale::global(std::locale(".utf8"));
 	SetConsoleCP(CP_UTF8);
 	SetConsoleOutputCP(CP_UTF8);
-	std::wcin.imbue(std::locale(""));
 	std::vector<lexem> lexems;
 	std::vector<std::wregex> regexes;
 	std::wstring text;
