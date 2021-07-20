@@ -437,6 +437,7 @@ void getLexemsUsingMatch (std::wstring text, std::vector<std::wregex>& regexes, 
 
 std::string runCode(std::vector<lexem> & polis)
 {
+	cr.runException = runException;
 	int pos = 0; // текущая позиция
 	while (pos < polis.size()) {
 		//std::wcout << "p " << pos << ". { " << polis[pos].first << ", " << polis[pos].second << " }\n";

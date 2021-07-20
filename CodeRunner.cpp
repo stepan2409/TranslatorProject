@@ -165,9 +165,10 @@ void CodeRunner::runEquation(std::wstring op)
 		int to_sz = getSize(to);
 		int fr_sz = getSize(fr);
 		if (to_sz != fr_sz)
-		{
-			// TODO: RE
-		}
+			runException(-2,
+				L"Arrays must be the same size to copy",
+				L"ћы не копируем массивы разных размеров"
+			);
 		if (to.first.basic == LEX_INT || to.first.basic == LEX_CHAR)
 		{
 			int* to_mem = std::any_cast<std::pair<int, int*>>(to.second).second;
@@ -794,45 +795,45 @@ int CodeRunner::getSize(value& arr, int & size)
 	{
 		auto arr_t = std::any_cast<std::pair<int, int*>>(arr.second);
 		int sz1 = (*int_sizes)[arr_t.first].top().size();
-		size = (*int_sizes)[arr_t.first].top()[sz1 - arr.first.depth];
+		size = (*int_sizes)[arr_t.first].top()[arr.first.depth - 1];
 		for (int i = 0; i < arr.first.depth; ++i) {
-			part *= (*int_sizes)[arr_t.first].top()[sz1 - i - 1];
+			part *= (*int_sizes)[arr_t.first].top()[i];
 		}
 	}
 	else if (arr.first.basic == LEX_BOOL)
 	{
 		auto arr_t = std::any_cast<std::pair<int, bool>>(arr.second);
 		int sz1 = (*bool_sizes)[arr_t.first].top().size();
-		size = (*bool_sizes)[arr_t.first].top()[sz1 - arr.first.depth];
+		size = (*bool_sizes)[arr_t.first].top()[arr.first.depth - 1];
 		for (int i = 0; i < arr.first.depth; ++i) {
-			part *= (*bool_sizes)[arr_t.first].top()[sz1 - i - 1];
+			part *= (*bool_sizes)[arr_t.first].top()[i];
 		}
 	}
 	else if (arr.first.basic == LEX_FLOAT)
 	{
 		auto arr_t = std::any_cast<std::pair<int, float*>>(arr.second);
 		int sz1 = (*float_sizes)[arr_t.first].top().size();
-		size = (*float_sizes)[arr_t.first].top()[sz1 - arr.first.depth];
+		size = (*float_sizes)[arr_t.first].top()[arr.first.depth - 1];
 		for (int i = 0; i < arr.first.depth; ++i) {
-			part *= (*float_sizes)[arr_t.first].top()[sz1 - i - 1];
+			part *= (*float_sizes)[arr_t.first].top()[i];
 		}
 	}
 	else if (arr.first.basic == LEX_STRING)
 	{
 		auto arr_t = std::any_cast<std::pair<int, std::wstring*>>(arr.second);
 		int sz1 = (*string_sizes)[arr_t.first].top().size();
-		size = (*string_sizes)[arr_t.first].top()[sz1 - arr.first.depth];
+		size = (*string_sizes)[arr_t.first].top()[arr.first.depth - 1];
 		for (int i = 0; i < arr.first.depth; ++i) {
-			part *= (*string_sizes)[arr_t.first].top()[sz1 - i - 1];
+			part *= (*string_sizes)[arr_t.first].top()[i];
 		}
 	}
 	else if (arr.first.basic == LEX_CHAR)
 	{
 		auto arr_t = std::any_cast<std::pair<int, int*>>(arr.second);
 		int sz1 = (*int_sizes)[arr_t.first].top().size();
-		size = (*int_sizes)[arr_t.first].top()[sz1 - arr.first.depth];
+		size = (*int_sizes)[arr_t.first].top()[arr.first.depth - 1];
 		for (int i = 0; i < arr.first.depth; ++i) {
-			part *= (*int_sizes)[arr_t.first].top()[sz1 - i - 1];
+			part *= (*int_sizes)[arr_t.first].top()[i];
 		}
 	}
 	return part;

@@ -29,7 +29,7 @@ public:
 	void runMatOperation(std::wstring op);
 	void runBinOperation(std::wstring op);
 	void runLogicOperation(std::wstring op);
-	void (*runExceprion)(int, std::wstring, std::wstring);
+	void (*runException)(int, std::wstring, std::wstring);
 
 	value getValue();
 	value getPointer();
